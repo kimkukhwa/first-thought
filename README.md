@@ -1,6 +1,6 @@
 # First Thought
 
-A morning app built around a simple idea: the first thing you feel when you wake up shapes the rest of your day, so you should choose it on purpose.
+A morning meditation app built around a simple idea: the first thing you think when you wake up shapes the rest of your day, so you should choose it on purpose. 
 
 Instead of being jolted awake by an alarm and reaching for your phone, First Thought wakes you gently, settles you with ambient sound, and walks you through a short guided meditation. You pick the feeling you want to carry into the day — calm, clear, confident, grounded — and spend a few minutes feeling it as if it has already happened. That feeling then guides how you think, act, and respond for the rest of the day.
 
@@ -62,4 +62,4 @@ docs/product.md         the product thinking behind the app
 
 ---
 
-A personal project, built and designed solo.
+A personal project, built and designed solo, with Claude cod support.
