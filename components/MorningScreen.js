@@ -1,35 +1,25 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAudioPlayerStatus } from 'expo-audio';
 import { colors } from '../theme';
 import { useMorningAudio } from '../morningAudio';
 import MeditationScreen from './MeditationScreen';
 import ClosingScreen from './ClosingScreen';
 
-const ALARM_SECONDS = 30;
 const AMBIENT_FADE_IN_SECONDS = 5;
 const AMBIENT_FADE_OUT_SECONDS = 10;
 
 // The morning sequence, in order:
-//   'alarm'      chime plays until a tap or 30 seconds
 //   'ambient'    ambient fades in, then a quiet wait
 //   'meditation' meditation screen and voice track, until the track ends
 //   'closing'    ambient fades out, closing line and Done
 export default function MorningScreen({ onDone, waitSeconds }) {
   const audio = useMorningAudio();
-  const [phase, setPhase] = useState('alarm');
+  const [phase, setPhase] = useState('ambient');
   const meditationStatus = useAudioPlayerStatus(audio.meditationPlayer);
 
   useEffect(() => {
-    if (phase !== 'alarm') return;
-    audio.playAlarm();
-    const timeout = setTimeout(() => setPhase('ambient'), ALARM_SECONDS * 1000);
-    return () => clearTimeout(timeout);
-  }, [phase, audio]);
-
-  useEffect(() => {
     if (phase !== 'ambient') return;
-    audio.stopAlarm();
     audio.startAmbient(AMBIENT_FADE_IN_SECONDS);
     const delay = (AMBIENT_FADE_IN_SECONDS + waitSeconds) * 1000;
     const timeout = setTimeout(() => setPhase('meditation'), delay);
@@ -55,10 +45,6 @@ export default function MorningScreen({ onDone, waitSeconds }) {
     audio.stopMeditation();
     audio.fadeOutAmbient(AMBIENT_FADE_OUT_SECONDS);
   }, [phase, audio]);
-
-  function handleTap() {
-    if (phase === 'alarm') setPhase('ambient');
-  }
 
   function handleDone() {
     audio.stopAll();
@@ -87,14 +73,13 @@ export default function MorningScreen({ onDone, waitSeconds }) {
   }
 
   return (
-    // The whole screen is tappable: any tap stops the alarm.
-    <Pressable style={styles.screen} onPress={handleTap}>
+    <View style={styles.screen}>
       <Text style={styles.greeting}>Good morning.</Text>
 
       <Pressable style={styles.doneButton} onPress={handleDone} hitSlop={12}>
         <Text style={styles.doneText}>Done</Text>
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 

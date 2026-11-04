@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import HomeScreen from './components/HomeScreen';
-import NightScreen from './components/NightScreen';
 import MorningScreen from './components/MorningScreen';
 import { defaultAlarmTime, nextOccurrence } from './time';
 import { colors } from './theme';
@@ -16,20 +14,16 @@ import {
   useLastNotificationResponse,
 } from './alarmNotification';
 
-const IDLE_SECONDS = 10;
-const WAIT_BEFORE_MEDITATION_SECONDS = 60;
-// Our own keep-awake tag, so we never release the one Expo Go uses in development.
-const KEEP_AWAKE_TAG = 'first-thought-alarm';
+const WAIT_BEFORE_MEDITATION_SECONDS = 5;
 
 export default function App() {
-  // The app is always in exactly one of these views: 'home', 'night', 'morning'.
+  // The app is always in exactly one of these views: 'home', 'morning'.
   const [view, setView] = useState('home');
   const [alarmTime, setAlarmTime] = useState(defaultAlarmTime);
   const [alarmOn, setAlarmOn] = useState(true);
   // False until saved settings have been read, so the defaults never flash.
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [lastTouch, setLastTouch] = useState(Date.now());
   // How long to wait, quietly, after the ambient sound starts before the
   // meditation begins. The test button shortens it.
   const [waitSeconds, setWaitSeconds] = useState(WAIT_BEFORE_MEDITATION_SECONDS);
@@ -52,34 +46,6 @@ export default function App() {
     if (!settingsLoaded) return;
     saveAlarmSettings({ alarmTime, alarmOn }).catch(() => {});
   }, [settingsLoaded, alarmTime, alarmOn]);
-
-  // Keep the screen on while the alarm is armed.
-  useEffect(() => {
-    if (alarmOn) {
-      activateKeepAwakeAsync(KEEP_AWAKE_TAG);
-    } else {
-      deactivateKeepAwake(KEEP_AWAKE_TAG);
-    }
-    return () => deactivateKeepAwake(KEEP_AWAKE_TAG);
-  }, [alarmOn]);
-
-  // Home -> Night after a period of no touches, only while the alarm is on.
-  useEffect(() => {
-    if (view !== 'home' || !alarmOn) return;
-    const timeout = setTimeout(() => setView('night'), IDLE_SECONDS * 1000);
-    return () => clearTimeout(timeout);
-  }, [view, alarmOn, lastTouch]);
-
-  // Home or Night -> Morning when the alarm time arrives.
-  useEffect(() => {
-    if (!alarmOn || view === 'morning') return;
-    const interval = setInterval(() => {
-      if (Date.now() >= alarmTime.getTime()) {
-        setView('morning');
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [alarmOn, alarmTime, view]);
 
   // Backup alarm: keep one notification scheduled for the alarm time while
   // the alarm is on. Cancel it when the alarm is off, or once the app has
@@ -110,11 +76,6 @@ export default function App() {
     }
   }, [lastNotificationResponse]);
 
-  function noteTouch() {
-    setLastTouch(Date.now());
-    return false; // let the touch continue to whatever was tapped
-  }
-
   function toggleEditing() {
     setIsEditing((current) => !current);
   }
@@ -132,12 +93,6 @@ export default function App() {
     }
   }
 
-  function testIn10s() {
-    setAlarmTime(new Date(Date.now() + 10 * 1000));
-    setAlarmOn(true);
-    setIsEditing(false);
-  }
-
   // Temporary: jump straight into the morning sequence without the wait.
   function testMeditation() {
     setWaitSeconds(0);
@@ -153,8 +108,8 @@ export default function App() {
   }
 
   return (
-    <View style={styles.root} onStartShouldSetResponderCapture={noteTouch}>
-      <StatusBar style="light" hidden={view === 'night'} />
+    <View style={styles.root}>
+      <StatusBar style="light" />
 
       {!settingsLoaded ? (
         <View style={styles.loading} />
@@ -168,12 +123,9 @@ export default function App() {
           onToggleEditing={toggleEditing}
           onToggleAlarm={toggleAlarm}
           onTimeChange={handleTimeChange}
-          onTestIn10s={testIn10s}
           onTestMeditation={testMeditation}
         />
       )}
-
-      {view === 'night' && <NightScreen onTap={() => setView('home')} />}
     </View>
   );
 }

@@ -10,7 +10,6 @@ export default function HomeScreen({
   onToggleEditing,
   onToggleAlarm,
   onTimeChange,
-  onTestIn10s,
   onTestMeditation,
 }) {
   return (
@@ -46,9 +45,6 @@ export default function HomeScreen({
 
       {/* Temporary, for testing the morning sequence. Remove later. */}
       <View style={styles.testArea}>
-        <Pressable style={styles.testButton} onPress={onTestIn10s} hitSlop={12}>
-          <Text style={styles.testText}>Test in 10s</Text>
-        </Pressable>
         <Pressable style={styles.testButton} onPress={onTestMeditation} hitSlop={12}>
           <Text style={styles.testText}>Test: skip wait</Text>
         </Pressable>

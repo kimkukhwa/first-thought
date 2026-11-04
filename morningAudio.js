@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 
-// Drop real files with the same names into assets/audio to replace these.
-const alarmSource = require('./assets/audio/alarm.wav');
 const ambientSource = require('./assets/audio/ambient.wav');
-//const meditationSource = require('./assets/audio/meditation.wav'); delete this line after test.
 const meditationSource = require('./assets/audio/meditation.m4a');
 
-// Owns the three sound players for the morning sequence and exposes
+// Owns the two sound players for the morning sequence and exposes
 // simple actions. The sequence timing itself lives in MorningScreen.
 export function useMorningAudio() {
-  const alarm = useAudioPlayer(alarmSource);
   const ambient = useAudioPlayer(ambientSource);
   const meditation = useAudioPlayer(meditationSource);
   const fadeInterval = useRef(null);
@@ -37,19 +33,16 @@ export function useMorningAudio() {
     }
 
     return {
-      playAlarm() {
-        setAudioModeAsync({ playsInSilentMode: true })
-          .catch(() => {})
-          .then(() => alarm.play());
-      },
-      stopAlarm() {
-        alarm.pause();
-      },
       startAmbient(fadeSeconds) {
         ambient.loop = true;
         ambient.volume = 0;
-        ambient.play();
-        fadeAmbient(1, fadeSeconds);
+        // Play even when the iPhone's silent switch is on.
+        setAudioModeAsync({ playsInSilentMode: true })
+          .catch(() => {})
+          .then(() => {
+            ambient.play();
+            fadeAmbient(1, fadeSeconds);
+          });
       },
       fadeOutAmbient(seconds) {
         fadeAmbient(0, seconds, () => ambient.pause());
@@ -68,7 +61,6 @@ export function useMorningAudio() {
       },
       stopAll() {
         clearInterval(fadeInterval.current);
-        alarm.pause();
         ambient.pause();
         meditation.pause();
       },
@@ -77,5 +69,5 @@ export function useMorningAudio() {
       // guessing timing with a separate timer.
       meditationPlayer: meditation,
     };
-  }, [alarm, ambient, meditation]);
+  }, [ambient, meditation]);
 }
