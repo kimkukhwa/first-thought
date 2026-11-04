@@ -6,10 +6,10 @@ A morning wake-up app that turns the first 10–15 minutes of the day into a gui
 
 ### Core idea
 
-**Alarm → wake up → breathe → meditation → choose how to meet the day  → then the day begins**
+**Wake up → Begin (or tap the morning reminder) → breathe → meditation → choose how to meet the day → then the day begins**
 
 
-Instead of waking up to a harsh alarm and immediately checking the phone, the user wakes gently and transitions directly into a short guided meditation.
+Instead of waking up and immediately checking the phone, the user opens First Thought and moves straight into a short guided meditation.
 
 > **What is the first thought you put into your mind every morning?**
 
@@ -21,7 +21,7 @@ Instead of waking up to a harsh alarm and immediately checking the phone, the us
 
 The user chooses:
 
-* Alarm time
+* Reminder time (optional)
 * Meditation length: 10–15 minutes
 * Morning intention/mood
 
@@ -41,20 +41,17 @@ Then they simply go to sleep.
 ### Morning
 
 **7:00 AM**
-→ Gentle alarm
+→ A quiet reminder notification (if switched on)
+→ Tap it, or open the app and tap **Begin**
 
-**7:01 AM**
-→ Alarm ends
+**A few seconds later**
 → Ambient sound slowly begins
 
-**7:02 AM**
-→ Guided meditation starts
+**Shortly after**
+→ Guided meditation starts, with a breathing circle over a slow sunrise
 
-**7:02–7:15 AM**
-→ Meditation
-
-**7:15 AM**
-→ Meditation ends
+**When the recording ends**
+→ "Your day begins now."
 → User starts the day
 
 The experience should require almost no interaction.
@@ -116,18 +113,11 @@ Minimal, clean, intuitive.
 
 ### Home
 
-**7:00 AM**
+**[ Begin ]**
 
-Alarm ● ON
+Morning Meditation · 10 min
 
-**How do you want to feel?**
-
-Calm · Clear · Confident · Grounded
-
-**Morning Meditation**
-10 min
-
-[ Edit ]
+Reminder   7:00 AM   On
 
 ### During meditation
 
@@ -138,6 +128,8 @@ Possible visual concept:
 **dark → dawn → light**
 
 The screen gradually becomes lighter as the meditation progresses, mirroring sunrise and waking up.
+
+A single soft glow in the center breathes with the user (4s in, 1s hold, 6s out, 1s rest). It turns from soft white to warm peach as the sky gets pale. Nothing else is on screen; a tap shows a faint End.
 
 ---
 
@@ -182,6 +174,12 @@ The full script should be developed collaboratively and edited until it sounds n
 * One ambient soundtrack
 * 10–15 minute timer
 * Minimal UI
+
+### Version 2 (current)
+
+* No alarm: a daily reminder notification and a Begin button instead
+* Breathing circle on the meditation screen
+* Soft transitions between screens
 
 ### Version 0.2
 
