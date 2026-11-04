@@ -1,54 +1,66 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme';
-import { formatTime } from '../time';
+import { dateAt, formatTime } from '../time';
 
 export default function HomeScreen({
-  alarmTime,
-  alarmOn,
+  reminder,
+  notificationsBlocked,
   isEditing,
+  onBegin,
   onToggleEditing,
-  onToggleAlarm,
+  onToggleReminder,
   onTimeChange,
-  onTestMeditation,
+  onTestSkipWait,
 }) {
   return (
     <View style={styles.screen}>
-      <Pressable onPress={onToggleEditing}>
-        <Text style={styles.time}>{formatTime(alarmTime)}</Text>
+      <Pressable style={styles.beginButton} onPress={onBegin}>
+        <Text style={styles.beginText}>Begin</Text>
       </Pressable>
 
-      <Pressable onPress={onToggleAlarm} hitSlop={12}>
-        <Text style={styles.alarmStatus}>{alarmOn ? 'Alarm  ON' : 'Alarm  OFF'}</Text>
-      </Pressable>
+      <Text style={styles.meditation}>Morning Meditation · 10 min</Text>
 
-      <View style={styles.meditation}>
-        <Text style={styles.meditationTitle}>Morning Meditation</Text>
-        <Text style={styles.meditationLength}>10 min</Text>
-      </View>
-
-      <Pressable style={styles.editButton} onPress={onToggleEditing} hitSlop={12}>
-        <Text style={styles.editText}>{isEditing ? 'Done' : 'Edit'}</Text>
-      </Pressable>
-
-      {isEditing && (
-        <DateTimePicker
-          value={alarmTime}
-          mode="time"
-          display="spinner"
-          onChange={onTimeChange}
-          themeVariant="dark"
-          textColor={colors.text}
-          style={styles.picker}
-        />
-      )}
-
-      {/* Temporary, for testing the morning sequence. Remove later. */}
-      <View style={styles.testArea}>
-        <Pressable style={styles.testButton} onPress={onTestMeditation} hitSlop={12}>
-          <Text style={styles.testText}>Test: skip wait</Text>
+      <View style={styles.reminderRow}>
+        <Text style={styles.reminderLabel}>Reminder</Text>
+        <Pressable onPress={onToggleEditing} hitSlop={12}>
+          <Text style={[styles.reminderTime, reminder.on && styles.reminderTimeOn]}>
+            {formatTime(reminder.hours, reminder.minutes)}
+          </Text>
+        </Pressable>
+        <Pressable onPress={onToggleReminder} hitSlop={12}>
+          <Text style={styles.reminderSwitch}>{reminder.on ? 'On' : 'Off'}</Text>
         </Pressable>
       </View>
+
+      {reminder.on && notificationsBlocked && (
+        <Text style={styles.blocked}>Notifications are off in Settings</Text>
+      )}
+
+      {isEditing && (
+        <>
+          <DateTimePicker
+            value={dateAt(reminder.hours, reminder.minutes)}
+            mode="time"
+            display="spinner"
+            onValueChange={onTimeChange}
+            themeVariant="dark"
+            textColor={colors.text}
+            style={styles.picker}
+          />
+          <Pressable style={styles.doneButton} onPress={onToggleEditing} hitSlop={12}>
+            <Text style={styles.doneText}>Done</Text>
+          </Pressable>
+        </>
+      )}
+
+      {__DEV__ && (
+        <View style={styles.testArea}>
+          <Pressable style={styles.testButton} onPress={onTestSkipWait} hitSlop={12}>
+            <Text style={styles.testText}>Test: skip wait</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -61,45 +73,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
-  time: {
-    color: colors.text,
-    fontSize: 64,
-    fontWeight: '200',
-    letterSpacing: 1,
+  beginButton: {
+    borderWidth: 1,
+    borderColor: colors.dim,
+    borderRadius: 999,
+    paddingVertical: 18,
+    paddingHorizontal: 64,
   },
-  alarmStatus: {
-    color: colors.muted,
-    fontSize: 15,
-    letterSpacing: 2,
-    marginTop: 12,
+  beginText: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '300',
+    letterSpacing: 1,
   },
   meditation: {
-    alignItems: 'center',
-    marginTop: 80,
-  },
-  meditationTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  meditationLength: {
     color: colors.muted,
     fontSize: 15,
-    marginTop: 6,
+    marginTop: 20,
   },
-  editButton: {
-    marginTop: 56,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 80,
   },
-  editText: {
+  reminderLabel: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: 15,
     letterSpacing: 1,
+  },
+  reminderTime: {
+    color: colors.muted,
+    fontSize: 15,
+    letterSpacing: 1,
+    marginLeft: 16,
+  },
+  reminderTimeOn: {
+    color: colors.text,
+  },
+  reminderSwitch: {
+    color: colors.muted,
+    fontSize: 15,
+    letterSpacing: 1,
+    marginLeft: 16,
+  },
+  blocked: {
+    color: colors.dim,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    marginTop: 12,
   },
   picker: {
     marginTop: 16,
     alignSelf: 'stretch',
+  },
+  doneButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  doneText: {
+    color: colors.muted,
+    fontSize: 14,
+    letterSpacing: 1,
   },
   testArea: {
     position: 'absolute',

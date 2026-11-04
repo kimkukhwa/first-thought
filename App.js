@@ -1,108 +1,128 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import HomeScreen from './components/HomeScreen';
 import MorningScreen from './components/MorningScreen';
-import { defaultAlarmTime, nextOccurrence } from './time';
 import { colors } from './theme';
-import { loadAlarmSettings, saveAlarmSettings } from './alarmStorage';
+import { loadReminderSettings, saveReminderSettings } from './reminderStorage';
 import {
-  cancelAlarmNotification,
-  isAlarmNotification,
+  cancelReminder,
+  clearLastNotificationResponse,
+  hasNotificationPermission,
+  isReminderNotification,
   requestNotificationPermission,
-  scheduleAlarmNotification,
+  scheduleDailyReminder,
   useLastNotificationResponse,
-} from './alarmNotification';
+} from './reminderNotification';
 
 const WAIT_BEFORE_MEDITATION_SECONDS = 5;
+const DEFAULT_REMINDER = { hours: 7, minutes: 0, on: false };
 
 export default function App() {
-  // The app is always in exactly one of these views: 'home', 'morning'.
+  // The app is always in exactly one of these views: 'home', 'session'.
   const [view, setView] = useState('home');
-  const [alarmTime, setAlarmTime] = useState(defaultAlarmTime);
-  const [alarmOn, setAlarmOn] = useState(true);
+  const [reminder, setReminder] = useState(DEFAULT_REMINDER);
   // False until saved settings have been read, so the defaults never flash.
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // True when the reminder is on but iOS isn't allowing notifications.
+  const [notificationsBlocked, setNotificationsBlocked] = useState(false);
+  // Goes up each time the app comes back to the front, so we re-check
+  // permission (the user may have changed it in Settings meanwhile).
+  const [appActiveCount, setAppActiveCount] = useState(0);
   // How long to wait, quietly, after the ambient sound starts before the
   // meditation begins. The test button shortens it.
   const [waitSeconds, setWaitSeconds] = useState(WAIT_BEFORE_MEDITATION_SECONDS);
 
   // Load saved settings once at startup.
   useEffect(() => {
-    loadAlarmSettings()
+    loadReminderSettings()
       .then((saved) => {
-        if (saved) {
-          setAlarmTime(saved.alarmTime);
-          setAlarmOn(saved.alarmOn);
-        }
+        if (saved) setReminder(saved);
       })
       .catch(() => {})
       .then(() => setSettingsLoaded(true));
   }, []);
 
-  // Save whenever the alarm time or on/off state changes.
+  // Save whenever the reminder changes.
   useEffect(() => {
     if (!settingsLoaded) return;
-    saveAlarmSettings({ alarmTime, alarmOn }).catch(() => {});
-  }, [settingsLoaded, alarmTime, alarmOn]);
+    saveReminderSettings(reminder).catch(() => {});
+  }, [settingsLoaded, reminder]);
 
-  // Backup alarm: keep one notification scheduled for the alarm time while
-  // the alarm is on. Cancel it when the alarm is off, or once the app has
-  // reached the morning on its own.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setAppActiveCount((count) => count + 1);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Keep the one daily notification in step with the reminder setting:
+  // scheduled while it's on, cancelled while it's off.
   useEffect(() => {
     if (!settingsLoaded) return;
-    if (!alarmOn || view === 'morning') {
-      cancelAlarmNotification().catch(() => {});
-      return;
-    }
     let stale = false;
-    requestNotificationPermission()
-      .then((allowed) => {
-        if (allowed && !stale) return scheduleAlarmNotification(alarmTime);
-      })
-      .catch(() => {});
+    async function sync() {
+      if (!reminder.on) {
+        setNotificationsBlocked(false);
+        await cancelReminder();
+        return;
+      }
+      const allowed = await hasNotificationPermission();
+      if (stale) return;
+      setNotificationsBlocked(!allowed);
+      if (allowed) await scheduleDailyReminder(reminder.hours, reminder.minutes);
+    }
+    sync().catch(() => {});
     return () => {
       stale = true;
     };
-  }, [settingsLoaded, alarmOn, alarmTime, view]);
+  }, [settingsLoaded, reminder.on, reminder.hours, reminder.minutes, appActiveCount]);
 
-  // A tap on the backup notification (app closed or in the background)
-  // opens the app straight into the morning sequence.
+  // A tap on the reminder opens the app straight into the session.
   const lastNotificationResponse = useLastNotificationResponse();
   useEffect(() => {
-    if (isAlarmNotification(lastNotificationResponse)) {
-      setView('morning');
-    }
+    if (!isReminderNotification(lastNotificationResponse)) return;
+    clearLastNotificationResponse();
+    setIsEditing(false);
+    setView('session');
   }, [lastNotificationResponse]);
 
   function toggleEditing() {
     setIsEditing((current) => !current);
   }
 
-  function toggleAlarm() {
-    if (!alarmOn) {
-      setAlarmTime(nextOccurrence(alarmTime));
+  async function toggleReminder() {
+    if (reminder.on) {
+      setReminder((current) => ({ ...current, on: false }));
+      return;
     }
-    setAlarmOn((current) => !current);
+    // Only the first time does this show the iOS prompt.
+    await requestNotificationPermission().catch(() => false);
+    setReminder((current) => ({ ...current, on: true }));
   }
 
-  function handleTimeChange(event, selectedDate) {
-    if (selectedDate) {
-      setAlarmTime(nextOccurrence(selectedDate));
-    }
+  function handleTimeChange(event, date) {
+    if (!date) return;
+    setReminder((current) => ({
+      ...current,
+      hours: date.getHours(),
+      minutes: date.getMinutes(),
+    }));
   }
 
-  // Temporary: jump straight into the morning sequence without the wait.
-  function testMeditation() {
-    setWaitSeconds(0);
-    setAlarmOn(true);
+  function begin() {
     setIsEditing(false);
-    setView('morning');
+    setView('session');
   }
 
-  function finishMorning() {
-    setAlarmOn(false);
+  // Development only: start the session without the short wait.
+  function testSkipWait() {
+    setWaitSeconds(0);
+    begin();
+  }
+
+  function finishSession() {
     setWaitSeconds(WAIT_BEFORE_MEDITATION_SECONDS);
     setView('home');
   }
@@ -113,17 +133,18 @@ export default function App() {
 
       {!settingsLoaded ? (
         <View style={styles.loading} />
-      ) : view === 'morning' ? (
-        <MorningScreen onDone={finishMorning} waitSeconds={waitSeconds} />
+      ) : view === 'session' ? (
+        <MorningScreen onDone={finishSession} waitSeconds={waitSeconds} />
       ) : (
         <HomeScreen
-          alarmTime={alarmTime}
-          alarmOn={alarmOn}
+          reminder={reminder}
+          notificationsBlocked={notificationsBlocked}
           isEditing={isEditing}
+          onBegin={begin}
           onToggleEditing={toggleEditing}
-          onToggleAlarm={toggleAlarm}
+          onToggleReminder={toggleReminder}
           onTimeChange={handleTimeChange}
-          onTestMeditation={testMeditation}
+          onTestSkipWait={testSkipWait}
         />
       )}
     </View>
