@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, StyleSheet, View } from 'react-native';
+import Fade from './components/Fade';
 import HomeScreen from './components/HomeScreen';
 import MorningScreen from './components/MorningScreen';
 import { colors } from './theme';
@@ -133,27 +134,33 @@ export default function App() {
 
       {!settingsLoaded ? (
         <View style={styles.loading} />
-      ) : view === 'session' ? (
-        <MorningScreen onDone={finishSession} waitSeconds={waitSeconds} />
       ) : (
-        <HomeScreen
-          reminder={reminder}
-          notificationsBlocked={notificationsBlocked}
-          isEditing={isEditing}
-          onBegin={begin}
-          onToggleEditing={toggleEditing}
-          onToggleReminder={toggleReminder}
-          onTimeChange={handleTimeChange}
-          onTestSkipWait={testSkipWait}
-        />
+        <Fade screenKey={view}>
+          {view === 'session' ? (
+            <MorningScreen onDone={finishSession} waitSeconds={waitSeconds} />
+          ) : (
+            <HomeScreen
+              reminder={reminder}
+              notificationsBlocked={notificationsBlocked}
+              isEditing={isEditing}
+              onBegin={begin}
+              onToggleEditing={toggleEditing}
+              onToggleReminder={toggleReminder}
+              onTimeChange={handleTimeChange}
+              onTestSkipWait={testSkipWait}
+            />
+          )}
+        </Fade>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Screens fade through this deep color, never through white.
   root: {
     flex: 1,
+    backgroundColor: colors.night,
   },
   // Plain dark screen shown for the instant before saved settings arrive.
   loading: {

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAudioPlayerStatus } from 'expo-audio';
-import { colors } from '../theme';
+import { colors, quiet } from '../theme';
 import { useMorningAudio } from '../morningAudio';
+import Fade from './Fade';
 import MeditationScreen from './MeditationScreen';
 import ClosingScreen from './ClosingScreen';
 
 const AMBIENT_FADE_IN_SECONDS = 5;
 const AMBIENT_FADE_OUT_SECONDS = 10;
+const VOICE_FADE_OUT_SECONDS = 2;
 
 // The morning sequence, in order:
 //   'ambient'    ambient fades in, then a quiet wait
@@ -42,7 +44,8 @@ export default function MorningScreen({ onDone, waitSeconds }) {
 
   useEffect(() => {
     if (phase !== 'closing') return;
-    audio.stopMeditation();
+    // If the session was ended early, the voice fades away gently.
+    audio.fadeOutMeditation(VOICE_FADE_OUT_SECONDS);
     audio.fadeOutAmbient(AMBIENT_FADE_OUT_SECONDS);
   }, [phase, audio]);
 
@@ -57,8 +60,9 @@ export default function MorningScreen({ onDone, waitSeconds }) {
     setPhase('closing');
   }
 
+  let content;
   if (phase === 'meditation') {
-    return (
+    content = (
       <MeditationScreen
         player={audio.meditationPlayer}
         onPause={audio.pauseMeditation}
@@ -66,21 +70,21 @@ export default function MorningScreen({ onDone, waitSeconds }) {
         onEnd={endMeditation}
       />
     );
+  } else if (phase === 'closing') {
+    content = <ClosingScreen onDone={handleDone} />;
+  } else {
+    content = (
+      <View style={styles.screen}>
+        <Text style={styles.greeting}>Good morning.</Text>
+
+        <Pressable style={styles.doneButton} onPress={handleDone} hitSlop={12}>
+          <Text style={quiet.text}>Done</Text>
+        </Pressable>
+      </View>
+    );
   }
 
-  if (phase === 'closing') {
-    return <ClosingScreen onDone={handleDone} />;
-  }
-
-  return (
-    <View style={styles.screen}>
-      <Text style={styles.greeting}>Good morning.</Text>
-
-      <Pressable style={styles.doneButton} onPress={handleDone} hitSlop={12}>
-        <Text style={styles.doneText}>Done</Text>
-      </Pressable>
-    </View>
-  );
+  return <Fade screenKey={phase}>{content}</Fade>;
 }
 
 const styles = StyleSheet.create({
@@ -98,14 +102,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   doneButton: {
+    ...quiet.button,
     position: 'absolute',
-    bottom: 48,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  doneText: {
-    color: colors.muted,
-    fontSize: 14,
-    letterSpacing: 1,
+    bottom: quiet.bottom,
   },
 });

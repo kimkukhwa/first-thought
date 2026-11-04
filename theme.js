@@ -8,3 +8,19 @@ export const colors = {
   glowSoft: '#ECE5DA',
   glowWarm: '#DEA076',
 };
+
+// Shared look for the small, quiet text buttons (Done, End, Pause...), so
+// every screen feels the same.
+export const quiet = {
+  button: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  text: {
+    color: colors.muted,
+    fontSize: 14,
+    letterSpacing: 1,
+  },
+  // Distance from the bottom of the screen for a lone quiet button.
+  bottom: 48,
+};

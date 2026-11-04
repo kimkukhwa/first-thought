@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors } from '../theme';
+import { colors, quiet } from '../theme';
 import { dateAt, formatTime } from '../time';
 
 export default function HomeScreen({
@@ -49,7 +49,7 @@ export default function HomeScreen({
             style={styles.picker}
           />
           <Pressable style={styles.doneButton} onPress={onToggleEditing} hitSlop={12}>
-            <Text style={styles.doneText}>Done</Text>
+            <Text style={quiet.text}>Done</Text>
           </Pressable>
         </>
       )}
@@ -127,13 +127,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   doneButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  doneText: {
-    color: colors.muted,
-    fontSize: 14,
-    letterSpacing: 1,
+    ...quiet.button,
   },
   testArea: {
     position: 'absolute',
@@ -141,8 +135,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   testButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    ...quiet.button,
   },
   testText: {
     color: colors.dim,

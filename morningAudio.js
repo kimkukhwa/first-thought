@@ -9,24 +9,31 @@ const meditationSource = require('./assets/audio/meditation.m4a');
 export function useMorningAudio() {
   const ambient = useAudioPlayer(ambientSource);
   const meditation = useAudioPlayer(meditationSource);
-  const fadeInterval = useRef(null);
+  // One running volume fade per player, so a new fade replaces the old one.
+  const fades = useRef({ ambient: null, meditation: null });
 
   // Make sure no fade keeps running after the screen goes away.
-  useEffect(() => () => clearInterval(fadeInterval.current), []);
+  useEffect(
+    () => () => {
+      clearInterval(fades.current.ambient);
+      clearInterval(fades.current.meditation);
+    },
+    []
+  );
 
   return useMemo(() => {
-    // Moves the ambient volume from where it is to `target` over `seconds`.
-    function fadeAmbient(target, seconds, onDone) {
-      clearInterval(fadeInterval.current);
+    // Moves `player`'s volume from where it is to `target` over `seconds`.
+    function fade(name, player, target, seconds, onDone) {
+      clearInterval(fades.current[name]);
       const stepMs = 100;
-      const totalSteps = (seconds * 1000) / stepMs;
-      const start = ambient.volume;
+      const totalSteps = Math.max(1, (seconds * 1000) / stepMs);
+      const start = player.volume;
       let step = 0;
-      fadeInterval.current = setInterval(() => {
+      fades.current[name] = setInterval(() => {
         step += 1;
-        ambient.volume = start + (target - start) * Math.min(1, step / totalSteps);
+        player.volume = start + (target - start) * Math.min(1, step / totalSteps);
         if (step >= totalSteps) {
-          clearInterval(fadeInterval.current);
+          clearInterval(fades.current[name]);
           if (onDone) onDone();
         }
       }, stepMs);
@@ -41,17 +48,19 @@ export function useMorningAudio() {
           .catch(() => {})
           .then(() => {
             ambient.play();
-            fadeAmbient(1, fadeSeconds);
+            fade('ambient', ambient, 1, fadeSeconds);
           });
       },
       fadeOutAmbient(seconds) {
-        fadeAmbient(0, seconds, () => ambient.pause());
+        fade('ambient', ambient, 0, seconds, () => ambient.pause());
       },
       startMeditation() {
+        meditation.volume = 1;
         meditation.play();
       },
-      stopMeditation() {
-        meditation.pause();
+      // A gentle ending: the voice fades away instead of cutting off.
+      fadeOutMeditation(seconds) {
+        fade('meditation', meditation, 0, seconds, () => meditation.pause());
       },
       pauseMeditation() {
         meditation.pause();
@@ -60,7 +69,8 @@ export function useMorningAudio() {
         meditation.play();
       },
       stopAll() {
-        clearInterval(fadeInterval.current);
+        clearInterval(fades.current.ambient);
+        clearInterval(fades.current.meditation);
         ambient.pause();
         meditation.pause();
       },

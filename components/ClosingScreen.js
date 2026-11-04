@@ -1,14 +1,36 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { colors, quiet } from '../theme';
+
+const LINE_DELAY_MS = 1000;
+const LINE_FADE_MS = 1500;
 
 export default function ClosingScreen({ onDone }) {
+  const lineOpacity = useRef(new Animated.Value(0)).current;
+
+  // A short pause on the empty screen, then the line slowly appears.
+  useEffect(() => {
+    const appear = Animated.timing(lineOpacity, {
+      toValue: 1,
+      delay: LINE_DELAY_MS,
+      duration: LINE_FADE_MS,
+      useNativeDriver: true,
+    });
+    appear.start();
+    return () => appear.stop();
+  }, [lineOpacity]);
+
   return (
     <View style={styles.screen}>
-      <Text style={styles.line}>Your day begins now.</Text>
+      <Animated.Text style={[styles.line, { opacity: lineOpacity }]}>
+        Your day begins now.
+      </Animated.Text>
 
-      <Pressable style={styles.doneButton} onPress={onDone} hitSlop={12}>
-        <Text style={styles.doneText}>Done</Text>
-      </Pressable>
+      <Animated.View style={[styles.doneArea, { opacity: lineOpacity }]}>
+        <Pressable style={quiet.button} onPress={onDone} hitSlop={12}>
+          <Animated.Text style={quiet.text}>Done</Animated.Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -29,15 +51,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.3,
   },
-  doneButton: {
+  doneArea: {
     position: 'absolute',
-    bottom: 48,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  doneText: {
-    color: colors.muted,
-    fontSize: 14,
-    letterSpacing: 1,
+    bottom: quiet.bottom,
   },
 });

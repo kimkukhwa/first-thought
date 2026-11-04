@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useAudioPlayerStatus } from 'expo-audio';
-import { colors } from '../theme';
+import { colors, quiet } from '../theme';
 
 // Sunrise: near-black with a hint of deep blue -> dusty blue-grey ->
 // faint warm haze -> soft pale morning light.
@@ -27,6 +27,7 @@ const CIRCLE_TOP = 0.46; // circle center, as a share of the screen height
 const SMALLEST = 0.6; // size at the bottom of the breath
 const WARM_FROM = 0.6; // share of the session after which the glow turns warm
 const CUE_SECONDS = 60; // "breathe in / out" words fade away after this
+const CONTROLS_SHOW_MS = 3000; // a tap shows End for this long
 
 // How strong each layer of the glow is. "dawn" is the soft white glow on
 // the dark sky; "day" is the warm glow, a little stronger so it stays
@@ -114,6 +115,31 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
   const cycle = useRef(new Animated.Value(0)).current;
   // The breath words: 1 = shown, 0 = gone for good.
   const cues = useRef(new Animated.Value(1)).current;
+  // End (and Pause) stay hidden until the screen is tapped.
+  const [controlsShown, setControlsShown] = useState(false);
+  const controlsOpacity = useRef(new Animated.Value(0)).current;
+  const hideTimer = useRef(null);
+  // While paused, keep the controls showing so Resume is easy to find.
+  const isPaused = status.isLoaded && !status.playing && status.currentTime > 0;
+  const controlsVisible = controlsShown || isPaused;
+
+  useEffect(() => {
+    const animation = Animated.timing(controlsOpacity, {
+      toValue: controlsVisible ? 1 : 0,
+      duration: controlsVisible ? 300 : 800,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [controlsVisible, controlsOpacity]);
+
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+
+  function showControls() {
+    setControlsShown(true);
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setControlsShown(false), CONTROLS_SHOW_MS);
+  }
 
   // The breathing never stops while this screen is showing.
   useEffect(() => {
@@ -205,6 +231,7 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
   const cueTop = centerY + size / 2 + 40;
 
   function handlePauseResume() {
+    showControls();
     if (status.playing) {
       onPause();
     } else {
@@ -214,6 +241,9 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
 
   return (
     <Animated.View style={[styles.screen, { backgroundColor }]}>
+      {/* The whole screen listens for a tap that reveals the controls. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={showControls} />
+
       <Animated.View
         pointerEvents="none"
         style={[styles.circle, circleBox, { opacity: brightness, transform: [{ scale }] }]}
@@ -239,14 +269,19 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
         {formatRemaining(remaining)}
       </Animated.Text>
 
-      <View style={styles.controls}>
-        <Pressable style={styles.controlButton} onPress={handlePauseResume} hitSlop={12}>
-          <Text style={styles.controlText}>{status.playing ? 'Pause' : 'Resume'}</Text>
+      <Animated.View
+        pointerEvents={controlsVisible ? 'auto' : 'none'}
+        style={[styles.controls, { opacity: controlsOpacity }]}
+      >
+        <Pressable style={quiet.button} onPress={handlePauseResume} hitSlop={12}>
+          <Text style={[quiet.text, styles.controlText]}>
+            {status.playing ? 'Pause' : 'Resume'}
+          </Text>
         </Pressable>
-        <Pressable style={styles.controlButton} onPress={onEnd} hitSlop={12}>
-          <Text style={styles.controlText}>End</Text>
+        <Pressable style={quiet.button} onPress={onEnd} hitSlop={12}>
+          <Text style={[quiet.text, styles.controlText]}>End</Text>
         </Pressable>
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -281,19 +316,14 @@ const styles = StyleSheet.create({
   },
   controls: {
     position: 'absolute',
-    bottom: 48,
+    bottom: quiet.bottom,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  controlButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-  },
+  // Faint, so it never pulls attention from the breathing.
   controlText: {
-    color: colors.muted,
-    fontSize: 14,
-    letterSpacing: 1,
+    opacity: 0.7,
   },
 });
