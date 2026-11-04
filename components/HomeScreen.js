@@ -50,7 +50,7 @@ export default function HomeScreen({
           <Text style={styles.testText}>Test in 10s</Text>
         </Pressable>
         <Pressable style={styles.testButton} onPress={onTestMeditation} hitSlop={12}>
-          <Text style={styles.testText}>Test: 30s meditation</Text>
+          <Text style={styles.testText}>Test: skip wait</Text>
         </Pressable>
       </View>
     </View>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { useAudioPlayerStatus } from 'expo-audio';
 import { colors } from '../theme';
 import { useMorningAudio } from '../morningAudio';
 import MeditationScreen from './MeditationScreen';
@@ -12,11 +13,12 @@ const AMBIENT_FADE_OUT_SECONDS = 10;
 // The morning sequence, in order:
 //   'alarm'      chime plays until a tap or 30 seconds
 //   'ambient'    ambient fades in, then a quiet wait
-//   'meditation' meditation screen and voice track
+//   'meditation' meditation screen and voice track, until the track ends
 //   'closing'    ambient fades out, closing line and Done
-export default function MorningScreen({ onDone, meditationSeconds, waitSeconds }) {
+export default function MorningScreen({ onDone, waitSeconds }) {
   const audio = useMorningAudio();
   const [phase, setPhase] = useState('alarm');
+  const meditationStatus = useAudioPlayerStatus(audio.meditationPlayer);
 
   useEffect(() => {
     if (phase !== 'alarm') return;
@@ -37,9 +39,16 @@ export default function MorningScreen({ onDone, meditationSeconds, waitSeconds }
   useEffect(() => {
     if (phase !== 'meditation') return;
     audio.startMeditation();
-    const timeout = setTimeout(() => setPhase('closing'), meditationSeconds * 1000);
-    return () => clearTimeout(timeout);
-  }, [phase, audio, meditationSeconds]);
+  }, [phase, audio]);
+
+  // Move on only once the track itself reports that it has finished,
+  // so the closing screen never cuts the recording short.
+  useEffect(() => {
+    if (phase !== 'meditation') return;
+    if (meditationStatus.didJustFinish) {
+      setPhase('closing');
+    }
+  }, [phase, meditationStatus.didJustFinish]);
 
   useEffect(() => {
     if (phase !== 'closing') return;
@@ -56,8 +65,21 @@ export default function MorningScreen({ onDone, meditationSeconds, waitSeconds }
     onDone();
   }
 
+  // Lets the meditation screen move straight to closing without waiting
+  // for the track to finish on its own.
+  function endMeditation() {
+    setPhase('closing');
+  }
+
   if (phase === 'meditation') {
-    return <MeditationScreen seconds={meditationSeconds} />;
+    return (
+      <MeditationScreen
+        player={audio.meditationPlayer}
+        onPause={audio.pauseMeditation}
+        onResume={audio.resumeMeditation}
+        onEnd={endMeditation}
+      />
+    );
   }
 
   if (phase === 'closing') {

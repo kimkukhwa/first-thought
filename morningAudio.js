@@ -4,7 +4,8 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 // Drop real files with the same names into assets/audio to replace these.
 const alarmSource = require('./assets/audio/alarm.wav');
 const ambientSource = require('./assets/audio/ambient.wav');
-const meditationSource = require('./assets/audio/meditation.wav');
+//const meditationSource = require('./assets/audio/meditation.wav'); delete this line after test.
+const meditationSource = require('./assets/audio/meditation.m4a');
 
 // Owns the three sound players for the morning sequence and exposes
 // simple actions. The sequence timing itself lives in MorningScreen.
@@ -59,12 +60,22 @@ export function useMorningAudio() {
       stopMeditation() {
         meditation.pause();
       },
+      pauseMeditation() {
+        meditation.pause();
+      },
+      resumeMeditation() {
+        meditation.play();
+      },
       stopAll() {
         clearInterval(fadeInterval.current);
         alarm.pause();
         ambient.pause();
         meditation.pause();
       },
+      // Exposed so a screen can watch the track's own status (real
+      // duration, current position, and when it finishes) rather than
+      // guessing timing with a separate timer.
+      meditationPlayer: meditation,
     };
   }, [alarm, ambient, meditation]);
 }

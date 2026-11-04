@@ -17,7 +17,6 @@ import {
 } from './alarmNotification';
 
 const IDLE_SECONDS = 10;
-const MEDITATION_SECONDS = 10 * 60;
 const WAIT_BEFORE_MEDITATION_SECONDS = 60;
 // Our own keep-awake tag, so we never release the one Expo Go uses in development.
 const KEEP_AWAKE_TAG = 'first-thought-alarm';
@@ -31,8 +30,8 @@ export default function App() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [lastTouch, setLastTouch] = useState(Date.now());
-  // Lengths used by the morning sequence. The test button shortens them.
-  const [meditationSeconds, setMeditationSeconds] = useState(MEDITATION_SECONDS);
+  // How long to wait, quietly, after the ambient sound starts before the
+  // meditation begins. The test button shortens it.
   const [waitSeconds, setWaitSeconds] = useState(WAIT_BEFORE_MEDITATION_SECONDS);
 
   // Load saved settings once at startup.
@@ -139,9 +138,8 @@ export default function App() {
     setIsEditing(false);
   }
 
-  // Temporary: jump straight into the morning sequence with a short meditation.
+  // Temporary: jump straight into the morning sequence without the wait.
   function testMeditation() {
-    setMeditationSeconds(30);
     setWaitSeconds(0);
     setAlarmOn(true);
     setIsEditing(false);
@@ -150,7 +148,6 @@ export default function App() {
 
   function finishMorning() {
     setAlarmOn(false);
-    setMeditationSeconds(MEDITATION_SECONDS);
     setWaitSeconds(WAIT_BEFORE_MEDITATION_SECONDS);
     setView('home');
   }
@@ -162,11 +159,7 @@ export default function App() {
       {!settingsLoaded ? (
         <View style={styles.loading} />
       ) : view === 'morning' ? (
-        <MorningScreen
-          onDone={finishMorning}
-          meditationSeconds={meditationSeconds}
-          waitSeconds={waitSeconds}
-        />
+        <MorningScreen onDone={finishMorning} waitSeconds={waitSeconds} />
       ) : (
         <HomeScreen
           alarmTime={alarmTime}
