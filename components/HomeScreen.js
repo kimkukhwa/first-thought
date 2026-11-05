@@ -1,8 +1,25 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  AppState,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, quiet } from '../theme';
-import { dateAt, formatTime } from '../time';
+import { dateAt, formatTime, partOfDay } from '../time';
+import BreathingCircle, { HANDOFF_MS } from './BreathingCircle';
+import { CIRCLE_TOP, CIRCLE_WIDTH } from './MeditationScreen';
 
+const HOME_CIRCLE_TOP = 0.57; // circle center on Home, as a share of the height
+const TEXT_FADE_MS = 900; // the words fade while the circle moves up
+
+// "The circle is the door": a greeting, one line, and the resting circle.
+// Tapping the circle grows it into the meditation.
 export default function HomeScreen({
   reminder,
   notificationsBlocked,
@@ -12,32 +29,92 @@ export default function HomeScreen({
   onToggleReminder,
   onTimeChange,
 }) {
+  const { width, height } = useWindowDimensions();
+
+  // The greeting follows the time of day; refresh it whenever the app
+  // comes back to the front.
+  const [part, setPart] = useState(() => partOfDay());
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setPart(partOfDay());
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // The handoff into the meditation.
+  const [leaving, setLeaving] = useState(false);
+  const words = useRef(new Animated.Value(1)).current; // 1 shown, 0 gone
+  const move = useRef(new Animated.Value(0)).current; // 0 home spot, 1 meditation spot
+  const sky = useRef(new Animated.Value(0)).current; // background: home -> sunrise start
+
+  function startSession() {
+    if (leaving) return;
+    setLeaving(true);
+    Animated.parallel([
+      Animated.timing(words, { toValue: 0, duration: TEXT_FADE_MS, useNativeDriver: true }),
+      Animated.timing(move, {
+        toValue: 1,
+        duration: HANDOFF_MS,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(sky, { toValue: 1, duration: HANDOFF_MS, useNativeDriver: false }),
+    ]).start(({ finished }) => {
+      if (finished) onBegin();
+    });
+  }
+
+  const size = width * CIRCLE_WIDTH;
+  // The circle box sits where the meditation puts it, then is shifted down
+  // to its Home spot; the handoff slides it back up.
+  const circleBox = {
+    left: (width - size) / 2,
+    top: height * CIRCLE_TOP - size / 2,
+    width: size,
+    height: size,
+  };
+  const translateY = move.interpolate({
+    inputRange: [0, 1],
+    outputRange: [(HOME_CIRCLE_TOP - CIRCLE_TOP) * height, 0],
+  });
+  const backgroundColor = sky.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.background, colors.skyStart],
+  });
+  const tapSize = size * 0.6;
+  const tapBox = {
+    width: tapSize,
+    height: tapSize,
+    borderRadius: tapSize / 2,
+    left: (size - tapSize) / 2,
+    top: (size - tapSize) / 2,
+  };
+
   return (
-    <View style={styles.screen}>
-      <Pressable style={styles.beginButton} onPress={onBegin}>
-        <Text style={styles.beginText}>Begin</Text>
-      </Pressable>
+    <Animated.View style={[styles.screen, { backgroundColor }]}>
+      <Animated.Text style={[styles.greeting, { top: height * 0.19, opacity: words }]}>
+        good {part}
+      </Animated.Text>
+      <Animated.Text style={[styles.line, { top: height * 0.235, opacity: words }]}>
+        Choose how you want to feel today and begin there.
+      </Animated.Text>
 
-      <Text style={styles.meditation}>Morning Meditation · 10 min</Text>
+      <Animated.View style={[styles.circleSpot, circleBox, { transform: [{ translateY }] }]}>
+        <BreathingCircle size={size} mode={leaving ? 'handoff' : 'resting'} />
+        <Animated.View pointerEvents="none" style={[styles.beginArea, { opacity: words }]}>
+          <Text style={styles.beginWord}>begin</Text>
+        </Animated.View>
+        <Pressable
+          style={[styles.circleSpot, tapBox]}
+          onPress={startSession}
+          disabled={leaving}
+          accessibilityRole="button"
+          accessibilityLabel="Begin meditation"
+        />
+      </Animated.View>
 
-      <View style={styles.reminderRow}>
-        <Text style={styles.reminderLabel}>Reminder</Text>
-        <Pressable onPress={onToggleEditing} hitSlop={12}>
-          <Text style={[styles.reminderTime, reminder.on && styles.reminderTimeOn]}>
-            {formatTime(reminder.hours, reminder.minutes)}
-          </Text>
-        </Pressable>
-        <Pressable onPress={onToggleReminder} hitSlop={12}>
-          <Text style={styles.reminderSwitch}>{reminder.on ? 'On' : 'Off'}</Text>
-        </Pressable>
-      </View>
-
-      {reminder.on && notificationsBlocked && (
-        <Text style={styles.blocked}>Notifications are off in Settings</Text>
-      )}
-
-      {isEditing && (
-        <>
+      {isEditing && !leaving && (
+        <View style={styles.pickerPanel}>
           <DateTimePicker
             value={dateAt(reminder.hours, reminder.minutes)}
             mode="time"
@@ -47,77 +124,142 @@ export default function HomeScreen({
             textColor={colors.text}
             style={styles.picker}
           />
-          <Pressable style={styles.doneButton} onPress={onToggleEditing} hitSlop={12}>
+          <Pressable style={quiet.button} onPress={onToggleEditing} hitSlop={12}>
             <Text style={quiet.text}>Done</Text>
           </Pressable>
-        </>
+        </View>
       )}
-    </View>
+
+      {reminder.on && notificationsBlocked && (
+        <Animated.Text style={[styles.blocked, { opacity: words }]}>
+          Notifications are off in Settings
+        </Animated.Text>
+      )}
+
+      <Animated.View
+        pointerEvents={leaving ? 'none' : 'auto'}
+        style={[styles.reminderRow, { opacity: words }]}
+      >
+        <Pressable
+          style={styles.dotButton}
+          onPress={onToggleReminder}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: reminder.on }}
+          accessibilityLabel="Reminder"
+        >
+          <View style={[styles.dot, !reminder.on && styles.dotOff]} />
+        </Pressable>
+        <Text style={styles.reminderLabel}>reminder</Text>
+        <Pressable
+          style={styles.timeButton}
+          onPress={onToggleEditing}
+          accessibilityRole="button"
+          accessibilityLabel="Change reminder time"
+        >
+          <Text style={styles.reminderTime}>{formatTime(reminder.hours, reminder.minutes)}</Text>
+        </Pressable>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
   },
-  beginButton: {
-    borderWidth: 1,
-    borderColor: colors.dim,
-    borderRadius: 999,
-    paddingVertical: 18,
-    paddingHorizontal: 64,
+  greeting: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: 13,
+    letterSpacing: 2.6,
   },
-  beginText: {
+  line: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: 36,
+    textAlign: 'center',
     color: colors.text,
     fontSize: 22,
-    fontWeight: '300',
-    letterSpacing: 1,
+    fontWeight: '200',
+    lineHeight: 32,
   },
-  meditation: {
-    color: colors.muted,
+  circleSpot: {
+    position: 'absolute',
+  },
+  beginArea: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  beginWord: {
+    color: colors.background,
     fontSize: 15,
-    marginTop: 20,
+    fontWeight: '400',
+    letterSpacing: 3.4,
+  },
+  pickerPanel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 96,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  picker: {
+    alignSelf: 'stretch',
+  },
+  blocked: {
+    position: 'absolute',
+    bottom: 92,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    color: colors.dim,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
   reminderRow: {
+    position: 'absolute',
+    bottom: 42,
+    left: 0,
+    right: 0,
+    justifyContent: 'center',
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 80,
+    alignItems: 'center',
+  },
+  // The dot is tiny; its touch area is 44 x 44.
+  dotButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.reminderDot,
+  },
+  dotOff: {
+    opacity: 0.15,
   },
   reminderLabel: {
     color: colors.muted,
-    fontSize: 15,
-    letterSpacing: 1,
+    fontSize: 12.5,
+    letterSpacing: 1.6,
+  },
+  timeButton: {
+    minHeight: 44,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
   },
   reminderTime: {
-    color: colors.muted,
-    fontSize: 15,
-    letterSpacing: 1,
-    marginLeft: 16,
-  },
-  reminderTimeOn: {
     color: colors.text,
-  },
-  reminderSwitch: {
-    color: colors.muted,
-    fontSize: 15,
-    letterSpacing: 1,
-    marginLeft: 16,
-  },
-  blocked: {
-    color: colors.dim,
-    fontSize: 13,
-    letterSpacing: 0.5,
-    marginTop: 12,
-  },
-  picker: {
-    marginTop: 16,
-    alignSelf: 'stretch',
-  },
-  doneButton: {
-    ...quiet.button,
+    fontSize: 12.5,
+    letterSpacing: 1.6,
   },
 });

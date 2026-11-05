@@ -25,6 +25,9 @@ export default function App() {
   // False until saved settings have been read, so the defaults never flash.
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // True when the session was started from the Home circle, which grows
+  // into the meditation by itself, so no fade is needed.
+  const [handoff, setHandoff] = useState(false);
   // True when the reminder is on but iOS isn't allowing notifications.
   const [notificationsBlocked, setNotificationsBlocked] = useState(false);
   // Goes up each time the app comes back to the front, so we re-check
@@ -82,6 +85,7 @@ export default function App() {
     if (!isReminderNotification(lastNotificationResponse)) return;
     clearLastNotificationResponse();
     setIsEditing(false);
+    setHandoff(false);
     setView('session');
   }, [lastNotificationResponse]);
 
@@ -108,12 +112,15 @@ export default function App() {
     }));
   }
 
+  // Called once the Home circle has finished growing into place.
   function begin() {
     setIsEditing(false);
+    setHandoff(true);
     setView('session');
   }
 
   function finishSession() {
+    setHandoff(false);
     setView('home');
   }
 
@@ -124,7 +131,7 @@ export default function App() {
       {!settingsLoaded ? (
         <View style={styles.loading} />
       ) : (
-        <Fade screenKey={view}>
+        <Fade screenKey={view} instant={handoff && view === 'session'}>
           {view === 'session' ? (
             <MorningScreen onDone={finishSession} />
           ) : (

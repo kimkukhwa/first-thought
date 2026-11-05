@@ -6,7 +6,9 @@ const HALF_MS = 350;
 
 // Shows `children` and, whenever `screenKey` changes, softly fades the old
 // screen out and the new one in, so there are never hard cuts.
-export default function Fade({ screenKey, children }) {
+// `instant` swaps without fading, for when the old screen has already
+// animated itself into the exact look of the new one.
+export default function Fade({ screenKey, instant = false, children }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const [shownKey, setShownKey] = useState(screenKey);
   // While the old screen fades out, keep drawing it as it last was.
@@ -15,6 +17,11 @@ export default function Fade({ screenKey, children }) {
   if (isCurrent) lastChildren.current = children;
 
   useEffect(() => {
+    if (!isCurrent && instant) {
+      opacity.setValue(1);
+      setShownKey(screenKey);
+      return;
+    }
     const animation = Animated.timing(opacity, {
       toValue: isCurrent ? 1 : 0,
       duration: HALF_MS,
@@ -24,7 +31,7 @@ export default function Fade({ screenKey, children }) {
       if (finished && !isCurrent) setShownKey(screenKey);
     });
     return () => animation.stop();
-  }, [isCurrent, screenKey, opacity]);
+  }, [isCurrent, instant, screenKey, opacity]);
 
   return (
     <Animated.View style={[styles.fill, { opacity }]}>

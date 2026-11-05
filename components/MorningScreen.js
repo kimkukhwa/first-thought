@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAudioPlayerStatus } from 'expo-audio';
 import { useMorningAudio } from '../morningAudio';
-import Fade from './Fade';
 import MeditationScreen from './MeditationScreen';
 import ClosingScreen from './ClosingScreen';
 
@@ -41,17 +40,15 @@ export default function MorningScreen({ onDone }) {
     onDone();
   }
 
-  const content =
-    phase === 'closing' ? (
-      <ClosingScreen onDone={leave} />
-    ) : (
-      <MeditationScreen
-        player={audio.meditationPlayer}
-        onPause={audio.pauseAll}
-        onResume={audio.resumeAll}
-        onHome={leave}
-      />
-    );
-
-  return <Fade screenKey={phase}>{content}</Fade>;
+  if (phase === 'closing') {
+    return <ClosingScreen onDone={leave} />;
+  }
+  return (
+    <MeditationScreen
+      player={audio.meditationPlayer}
+      onPause={audio.pauseAll}
+      onResume={audio.resumeAll}
+      onHome={leave}
+    />
+  );
 }
