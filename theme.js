@@ -7,6 +7,10 @@ export const colors = {
   // The breathing glow: soft white on the dark sky, warm peach on the pale sky.
   glowSoft: '#ECE5DA',
   glowWarm: '#DEA076',
+  // The first color of the meditation sunrise (Home fades into it on Begin).
+  skyStart: '#06090F',
+  // The small reminder dot on Home.
+  reminderDot: '#D9A47E',
 };
 
 // Shared look for the small, quiet text buttons (Done, End, Pause...), so

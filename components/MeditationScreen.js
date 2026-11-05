@@ -1,110 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  AppState,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Animated, AppState, Easing, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayerStatus } from 'expo-audio';
-import { colors, quiet } from '../theme';
+import { colors } from '../theme';
+import BreathingCircle from './BreathingCircle';
 
 // Sunrise: near-black with a hint of deep blue -> dusty blue-grey ->
 // faint warm haze -> soft pale morning light.
 const SKY_STOPS = [0, 0.4, 0.75, 1];
-const SKY_COLORS = ['#06090F', '#2C3646', '#8C8086', '#F3EDE4'];
-// The time indicator stays just barely visible against each sky color.
-const INDICATOR_COLORS = ['#1A2130', '#414B5C', '#A59AA0', '#CFC7BC'];
+const SKY_COLORS = [colors.skyStart, '#2C3646', '#8C8086', '#F3EDE4'];
 
-// One breath, in milliseconds. Change these to tune the pace.
-// 4s in, 1s hold, 6s out, 1s rest = 12 seconds, 5 breaths a minute.
-const BREATH = { inhale: 4000, hold: 1000, exhale: 6000, rest: 1000 };
-
-const CIRCLE_WIDTH = 0.6; // full size, as a share of the screen width
-const CIRCLE_TOP = 0.46; // circle center, as a share of the screen height
-const SMALLEST = 0.6; // size at the bottom of the breath
+// Where the circle sits. Home uses the same numbers for its handoff.
+export const CIRCLE_WIDTH = 0.6; // full size, as a share of the screen width
+export const CIRCLE_TOP = 0.46; // circle center, as a share of the screen height
 const WARM_FROM = 0.6; // share of the session after which the glow turns warm
-const CUE_SECONDS = 60; // "breathe in / out" words fade away after this
-const PAUSED_DIM = 0.6; // how bright the circle stays while paused
 
-// How strong each layer of the glow is. "dawn" is the soft white glow on
-// the dark sky; "day" is the warm glow, a little stronger so it stays
-// visible on the pale sky.
-const DAWN = { color: colors.glowSoft, halo: 0.24, core: 0.54, ring: 0.2 };
-const DAY = { color: colors.glowWarm, halo: 0.4, core: 0.92, ring: 0.45 };
-
-// --- Breath timing, as points along one 0..1 cycle -----------------------
-const TOTAL = BREATH.inhale + BREATH.hold + BREATH.exhale + BREATH.rest;
-const at = (ms) => ms / TOTAL;
-const IN_END = at(BREATH.inhale);
-const HOLD_END = at(BREATH.inhale + BREATH.hold);
-const OUT_END = at(BREATH.inhale + BREATH.hold + BREATH.exhale);
-
-// The native animation driver can't take an easing curve inside an
-// interpolation, so we trace a smooth ease-in-out curve with small steps.
-const STEPS = 12;
-const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
-function easedSegment(from, to, startValue, endValue) {
-  const input = [];
-  const output = [];
-  for (let i = 0; i <= STEPS; i++) {
-    input.push(from + ((to - from) * i) / STEPS);
-    output.push(startValue + (endValue - startValue) * ease(i / STEPS));
-  }
-  return { input, output };
-}
-const inhale = easedSegment(0, IN_END, 0, 1);
-const exhale = easedSegment(HOLD_END, OUT_END, 1, 0);
-const BREATH_INPUT = [...inhale.input, ...exhale.input, 1];
-const BREATH_OUTPUT = [...inhale.output, ...exhale.output, 0];
-
-// --- Glow drawing ---------------------------------------------------------
-function rgba(hex, alpha) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
-
-function radialGlow(hex, alpha) {
-  return `radial-gradient(circle closest-side, ${rgba(hex, alpha)} 0%, ${rgba(
-    hex,
-    alpha * 0.45
-  )} 45%, ${rgba(hex, 0)} 100%)`;
-}
-
-// A round layer of `size`, centered inside a box of `boxSize`.
-function centeredCircle(size, boxSize) {
-  const offset = (boxSize - size) / 2;
-  return { position: 'absolute', width: size, height: size, left: offset, top: offset, borderRadius: size / 2 };
-}
-
-// One full glow: a wide faint halo, a bright soft core, and a thin ring.
-function Glow({ size, look }) {
-  return (
-    <>
-      <View
-        style={[centeredCircle(size * 2.3, size), { backgroundImage: radialGlow(look.color, look.halo) }]}
-      />
-      <View
-        style={[centeredCircle(size * 1.05, size), { backgroundImage: radialGlow(look.color, look.core) }]}
-      />
-      <View
-        style={[centeredCircle(size, size), { borderWidth: 1, borderColor: rgba(look.color, look.ring) }]}
-      />
-    </>
-  );
-}
-
-function formatRemaining(totalSeconds) {
-  const safeSeconds = Math.max(0, Math.round(totalSeconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const seconds = safeSeconds % 60;
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
-
-export default function MeditationScreen({ player, onPause, onResume, onHome }) {
+// The meditation: the sunrise, the breathing circle, and nothing else.
+// Tapping the circle pauses and resumes. While paused, a house icon leads home.
+// `ending` is set when the recording has finished: the circle dissolves and
+// the screen no longer reacts to taps.
+export default function MeditationScreen({ player, onPause, onResume, onHome, ending = false }) {
   const status = useAudioPlayerStatus(player);
   const { width, height } = useWindowDimensions();
 
@@ -112,51 +27,18 @@ export default function MeditationScreen({ player, onPause, onResume, onHome }) 
   const progress = useRef(new Animated.Value(0)).current;
   // Glow color: 0 = soft white, 1 = warm peach.
   const warmth = useRef(new Animated.Value(0)).current;
-  // Position within one breath, looping 0..1.
-  const cycle = useRef(new Animated.Value(0)).current;
-  // The breath words: 1 = shown, 0 = gone for good.
-  const cues = useRef(new Animated.Value(1)).current;
-  // 0 while the session runs, 1 while it's paused. Drives the dimming,
-  // the "paused" word and the "home" text.
+  // 0 while running, 1 while paused (the house icon).
   const pausedLook = useRef(new Animated.Value(0)).current;
 
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  const breathing = useRef(null);
-
-  // Breathes from `from` (a point in the breath, 0..1) to the end of that
-  // breath, then keeps looping whole breaths.
-  function breatheFrom(from) {
-    const finishBreath = Animated.timing(cycle, {
-      toValue: 1,
-      duration: (1 - from) * TOTAL,
-      easing: Easing.linear,
-      useNativeDriver: true,
-    });
-    breathing.current = finishBreath;
-    finishBreath.start(({ finished }) => {
-      if (!finished) return;
-      cycle.setValue(0);
-      const loop = Animated.loop(
-        Animated.timing(cycle, {
-          toValue: 1,
-          duration: TOTAL,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      );
-      breathing.current = loop;
-      loop.start();
-    });
-  }
+  const endingRef = useRef(ending);
+  endingRef.current = ending;
 
   function pause() {
-    if (pausedRef.current) return;
+    if (pausedRef.current || endingRef.current) return;
     pausedRef.current = true;
     setPaused(true);
-    // The circle holds still exactly where it is in the breath.
-    if (breathing.current) breathing.current.stop();
-    cycle.stopAnimation();
     onPause();
   }
 
@@ -164,8 +46,6 @@ export default function MeditationScreen({ player, onPause, onResume, onHome }) 
     if (!pausedRef.current) return;
     pausedRef.current = false;
     setPaused(false);
-    // Carry on from the same point in the breath, at the normal pace.
-    cycle.stopAnimation((value) => breatheFrom(value));
     onResume();
   }
 
@@ -176,24 +56,6 @@ export default function MeditationScreen({ player, onPause, onResume, onHome }) 
       pause();
     }
   }
-
-  // Start breathing when the screen appears; the words fade after a minute.
-  useEffect(() => {
-    breatheFrom(0);
-    const fadeCues = Animated.timing(cues, {
-      toValue: 0,
-      delay: CUE_SECONDS * 1000,
-      duration: 2000,
-      useNativeDriver: true,
-    });
-    fadeCues.start();
-    return () => {
-      if (breathing.current) breathing.current.stop();
-      fadeCues.stop();
-    };
-    // Runs once, when the screen appears.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // iOS stops the sound when the app goes to the background (Home button,
   // lock screen), so show the session as paused when the user comes back.
@@ -254,81 +116,46 @@ export default function MeditationScreen({ player, onPause, onResume, onHome }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.playing, status.duration, progress, warmth]);
 
-  // The countdown follows the recording, so it stops while paused.
-  const remaining = status.duration ? status.duration - status.currentTime : 0;
-
   const backgroundColor = progress.interpolate({ inputRange: SKY_STOPS, outputRange: SKY_COLORS });
-  const indicatorColor = progress.interpolate({ inputRange: SKY_STOPS, outputRange: INDICATOR_COLORS });
-
-  const breath = cycle.interpolate({ inputRange: BREATH_INPUT, outputRange: BREATH_OUTPUT });
-  const scale = breath.interpolate({ inputRange: [0, 1], outputRange: [SMALLEST, 1] });
-  const brightness = breath.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1] });
-  const pauseDim = pausedLook.interpolate({ inputRange: [0, 1], outputRange: [1, PAUSED_DIM] });
-  const running = pausedLook.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  const dawnOpacity = warmth.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-
-  // Each word fades in at the start of its half of the breath and out at the end.
-  const cueIn = cycle.interpolate({
-    inputRange: [0, at(500), IN_END - at(300), IN_END + at(200)],
-    outputRange: [0, 1, 1, 0],
-    extrapolate: 'clamp',
-  });
-  const cueOut = cycle.interpolate({
-    inputRange: [HOLD_END, HOLD_END + at(500), OUT_END - at(300), OUT_END + at(200)],
-    outputRange: [0, 1, 1, 0],
-    extrapolate: 'clamp',
-  });
-  // Breath words show only while running, and only in the first minute.
-  const cueInOpacity = Animated.multiply(Animated.multiply(cueIn, cues), running);
-  const cueOutOpacity = Animated.multiply(Animated.multiply(cueOut, cues), running);
 
   const size = width * CIRCLE_WIDTH;
   const centerY = height * CIRCLE_TOP;
   const circleBox = { left: (width - size) / 2, top: centerY - size / 2, width: size, height: size };
-  const wordsTop = centerY + size / 2 + 40;
 
   return (
     <Animated.View style={[styles.screen, { backgroundColor }]}>
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.circle,
-          circleBox,
-          { opacity: Animated.multiply(brightness, pauseDim), transform: [{ scale }] },
-        ]}
-      >
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: dawnOpacity }]}>
-          <Glow size={size} look={DAWN} />
-        </Animated.View>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: warmth }]}>
-          <Glow size={size} look={DAY} />
-        </Animated.View>
-      </Animated.View>
-
-      {/* The whole circle area, at its full size, pauses and resumes. */}
-      <Pressable
-        style={[styles.circle, circleBox]}
-        onPress={togglePause}
-        accessibilityRole="button"
-        accessibilityLabel={paused ? 'Resume' : 'Pause'}
-      />
-
-      <View pointerEvents="none" style={[styles.wordsArea, { top: wordsTop }]}>
-        <Animated.Text style={[styles.word, { opacity: cueInOpacity }]}>breathe in</Animated.Text>
-        <Animated.Text style={[styles.word, { opacity: cueOutOpacity }]}>breathe out</Animated.Text>
-        <Animated.Text style={[styles.word, { opacity: pausedLook }]}>paused</Animated.Text>
+      <View pointerEvents="none" style={[styles.circleSpot, circleBox]}>
+        <BreathingCircle
+          size={size}
+          mode="session"
+          paused={paused}
+          warmth={warmth}
+          showCues
+          dissolve={ending}
+        />
       </View>
 
-      <Animated.Text style={[styles.indicator, { color: indicatorColor }]}>
-        {formatRemaining(remaining)}
-      </Animated.Text>
+      {/* The whole circle area, at its full size, pauses and resumes. */}
+      {!ending && (
+        <Pressable
+          style={[styles.circleSpot, circleBox]}
+          onPress={togglePause}
+          accessibilityRole="button"
+          accessibilityLabel={paused ? 'Resume' : 'Pause'}
+        />
+      )}
 
       <Animated.View
-        pointerEvents={paused ? 'auto' : 'none'}
+        pointerEvents={paused && !ending ? 'auto' : 'none'}
         style={[styles.homeArea, { opacity: pausedLook }]}
       >
-        <Pressable style={styles.homeButton} onPress={onHome} hitSlop={8}>
-          <Text style={[quiet.text, styles.homeText]}>home</Text>
+        <Pressable
+          style={styles.homeButton}
+          onPress={onHome}
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+        >
+          <Ionicons name="home-outline" size={28} color={colors.muted} />
         </Pressable>
       </Animated.View>
     </Animated.View>
@@ -339,43 +166,19 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  circle: {
+  circleSpot: {
     position: 'absolute',
   },
-  wordsArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  word: {
-    position: 'absolute',
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '300',
-    letterSpacing: 2,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 56,
-    right: 24,
-    fontSize: 12,
-    fontWeight: '300',
-    letterSpacing: 1,
-  },
-  // Lined up with the countdown on the other side of the screen.
   homeArea: {
     position: 'absolute',
-    top: 42,
-    left: 12,
+    top: 40,
+    right: 12,
   },
+  // 52 x 52: comfortably more than the 44pt minimum touch area.
   homeButton: {
-    minWidth: 44,
-    minHeight: 44,
-    paddingHorizontal: 12,
+    width: 52,
+    height: 52,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  homeText: {
-    opacity: 0.7,
   },
 });
