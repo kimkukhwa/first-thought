@@ -7,23 +7,26 @@ Instead of being jolted awake by an alarm and reaching for your phone, First Tho
 
 ## How it works
 
-1. **Begin** — tap Begin, or tap the daily reminder notification
+1. **Begin** — tap the breathing circle on Home, or tap the daily reminder notification
 2. **Settle** — ambient sound fades in
 3. **Meditate** — a guided session where you choose and inhabit your intention for the day, with a breathing circle over a slow sunrise
-4. **Close** — the session ends and the day starts on your terms
+4. **Close** — the sky warms, a short line for the time of day, and back home
 
-## Current state — V2
+## Current state — v2.1
 
-- **No alarm.** A daily reminder notification at a time you pick (or none), plus a Begin button to start any time. Tapping the reminder opens straight into the session.
+- **The circle is the door.** Home is a greeting, one line, and a softly breathing circle; tapping it grows the circle into the meditation.
+- **No alarm.** A daily reminder notification at a time you pick (or none). Tapping the reminder opens straight into the session.
 - **Breathing circle.** One soft glow that breathes 4s in, 1s hold, 6s out, 1s rest, turning from soft white to warm peach as the sunrise gets pale. Built with React Native's Animated API on the native driver, no extra libraries.
-- **Recorded meditation.** The session lasts as long as the recording. Tap the circle to pause or resume; while paused, "home" leaves the session.
-- **Soft transitions** between every screen, and a meditation screen with nothing on it but the breathing.
+- **Recorded meditation.** The session lasts as long as the recording. Tap the circle to pause or resume; while paused, a house icon leads home.
+- **Warm closing.** When the meditation finishes, the circle dissolves into a warm gradient sky with one closing line, then it fades back home on its own.
 
 ## Built with
 
 - React Native via Expo (SDK 58)
 - `expo-audio` for audio playback
 - `expo-notifications` for the daily reminder
+- `expo-linear-gradient` for the warm closing sky
+- `@expo/vector-icons` for the house icon
 - `AsyncStorage` for saved reminder settings
 
 ## Running it locally
@@ -37,18 +40,18 @@ npm install
 npx expo start
 ```
 
-Scan the QR code with Expo Go on your phone and tap Begin.
+Scan the QR code with Expo Go on your phone and tap the breathing circle.
 
 
 ## Layout
 
 ```
 App.js                  app state, reminder scheduling, screen changes
-components/             Home, the session screens, and the Fade transition
+components/             Home, the breathing circle, the session and closing screens, the Fade transition
 morningAudio.js         ambient and meditation playback, volume fades
 reminderNotification.js the daily reminder notification
 reminderStorage.js      saving and loading reminder settings
-time.js                 time formatting
+time.js                 time formatting and part of the day
 theme.js                colors and shared button styles
 assets/audio/           ambient and meditation tracks
 docs/product.md         the product thinking behind the app

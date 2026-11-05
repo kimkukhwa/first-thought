@@ -6,7 +6,7 @@ A morning wake-up app that turns the first 10–15 minutes of the day into a gui
 
 ### Core idea
 
-**Wake up → Begin (or tap the morning reminder) → breathe → meditation → choose how to meet the day → then the day begins**
+**Wake up → tap the circle (or the morning reminder) → breathe → meditation → choose how to meet the day → then the day begins**
 
 
 Instead of waking up and immediately checking the phone, the user opens First Thought and moves straight into a short guided meditation.
@@ -42,15 +42,16 @@ Then they simply go to sleep.
 
 **7:00 AM**
 → A quiet reminder notification (if switched on)
-→ Tap it, or open the app and tap **Begin**
+→ Tap it, or open the app and tap the breathing circle
 
 **Right away**
 → Guided meditation starts, with a breathing circle over a slow sunrise
 → Ambient sound slowly fades in underneath
 
 **When the recording ends**
-→ "Your day begins now."
-→ User starts the day
+→ The circle dissolves and the sky warms (apricot → peach → soft rose)
+→ "Let the feeling you chose lead your morning." (a line for the time of day)
+→ Back home on its own; the user starts the day
 
 The experience should require almost no interaction.
 
@@ -111,11 +112,13 @@ Minimal, clean, intuitive.
 
 ### Home
 
-**[ Begin ]**
+good morning
 
-Morning Meditation · 10 min
+**Choose how you want to feel today and begin there.**
 
-Reminder   7:00 AM   On
+( a softly breathing circle with "begin" inside: tap it to start )
+
+● reminder 7:00 AM
 
 ### During meditation
 
@@ -127,7 +130,11 @@ Possible visual concept:
 
 The screen gradually becomes lighter as the meditation progresses, mirroring sunrise and waking up.
 
-A single soft glow in the center breathes with the user (4s in, 1s hold, 6s out, 1s rest). It turns from soft white to warm peach as the sky gets pale. Nothing else is on screen. Tapping the circle pauses the session (it holds still and dims, and "paused" shows under it); tapping again resumes. While paused, a faint "home" in the corner leaves the session.
+A single soft glow in the center breathes with the user (4s in, 1s hold, 6s out, 1s rest). It turns from soft white to warm peach as the sky gets pale. Nothing else is on screen, not even a countdown. Tapping the circle pauses the session (it holds still and dims, and "paused" shows under it); tapping again resumes. While paused, a thin house icon in the corner leaves the session.
+
+### Closing
+
+Only when the meditation finishes on its own: the circle dissolves, the sky warms into a soft gradient, and one line for the time of day appears. After a few seconds it fades back home by itself. No buttons.
 
 ---
 
@@ -173,7 +180,13 @@ The full script should be developed collaboratively and edited until it sounds n
 * 10–15 minute timer
 * Minimal UI
 
-### Version 2 (current)
+### Version 2.1 (current)
+
+* Home: the breathing circle is the way in, with a time-of-day greeting
+* No countdown; tap the circle to pause, house icon to leave
+* Warm closing page with a line for the time of day
+
+### Version 2
 
 * No alarm: a daily reminder notification and a Begin button instead
 * Breathing circle on the meditation screen

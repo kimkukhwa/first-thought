@@ -6,11 +6,11 @@
 
 First Thought is a morning meditation app. Instead of starting the day by checking the phone, the user spends a few quiet minutes with a short guided meditation, then chooses how they want to meet the day.
 
-The session, started with **Begin** or by tapping the daily reminder:
+Home is a greeting, one line, and a softly breathing circle with "begin" inside. The session, started by tapping that circle or the daily reminder:
 
-1. The meditation screen opens right away: the voice starts and a soft ambient soundtrack fades in underneath, with a breathing circle over a slow sunrise.
-2. Tapping the circle pauses everything; tapping it again resumes. While paused, a faint "home" in the top-left leaves the session.
-3. When the recording ends, the ambient sound fades out, a short closing line shows, and the user starts their day. (Leaving early skips the closing.)
+1. The circle grows and moves up into the meditation: the voice starts and a soft ambient soundtrack fades in underneath, with the breathing circle over a slow sunrise. No countdown, no buttons.
+2. Tapping the circle pauses everything; tapping it again resumes. While paused, a house icon in the top-right leaves the session.
+3. When the recording ends on its own, the circle dissolves, the sky warms into a gradient, and a closing line for the time of day shows, then the app returns home by itself. (Leaving early skips the closing.)
 
 The experience should need almost no interaction. Full product notes live in `docs/product.md`. Read that file before making product or design decisions.
 
@@ -31,19 +31,20 @@ The app must feel **calm, warm, human, grounded, simple, and non-cheesy**. It sh
 - **JavaScript only.** No TypeScript.
 - **Tested on a real iPhone using Expo Go.** Everything must run inside Expo Go with no custom native code and no development build.
 - **Do not add libraries unless clearly needed.** When a library is genuinely needed, prefer the official `expo-*` package for it, and confirm it works inside Expo Go before adding it. Explain why the library is needed before installing it. Add or remove packages with `npx expo install` so versions stay matched to the SDK.
-- Current dependencies: `expo`, `expo-status-bar`, `expo-audio`, `expo-asset` (required by expo-audio), `expo-notifications`, `@react-native-community/datetimepicker`, `@react-native-async-storage/async-storage`, `react`, `react-native`. Nothing else.
+- Current dependencies: `expo`, `expo-status-bar`, `expo-audio`, `expo-asset` (required by expo-audio), `expo-notifications`, `expo-linear-gradient` (the closing gradient), `@expo/vector-icons` (the house icon) with `expo-font` (required by it), `@react-native-community/datetimepicker`, `@react-native-async-storage/async-storage`, `react`, `react-native`. Nothing else.
 - `assets/audio/meditation.m4a` is the real recorded meditation; the session lasts as long as the recording. `ambient.wav` is still a placeholder.
 
-## Scope: V2
+## Scope: v2.1
 
-V2 is these things, and only these:
+v2.1 is these things, and only these:
 
-1. **Begin.** A button on Home that starts the session right away.
+1. **Home: "the circle is the door".** A greeting by time of day ("good morning / afternoon / evening / night", from `partOfDay` in `time.js`), the line "Choose how you want to feel today and begin there.", and the breathing circle resting below the middle with "begin" inside. Tapping the circle starts the session: the words fade while the circle grows and moves up into its meditation spot. At the bottom, "reminder 7:00" with a warm dot (tap the dot to toggle, the time to change it).
 2. **Daily reminder.** One repeating local notification at a time the user picks, with On/Off. Tapping it opens straight into the session. If the app is open when it fires, a quiet banner shows and nothing starts on its own. Permission is asked only the first time the reminder is switched on.
-3. **The session.** The meditation recording with ambient sound underneath, then a short closing screen when the recording ends.
-4. **Breathing circle.** A soft glow on the meditation screen breathing 4s in / 1s hold / 6s out / 1s rest over the v1 sunrise, turning from soft white to warm peach late in the session. Built with React Native's Animated (native driver), no extra libraries. Timing lives in the `BREATH` constant in `components/MeditationScreen.js`.
-5. **Pause and leave.** Tap the circle to pause (sound, countdown and circle hold still, the circle dims, "paused" shows under it) and tap again to resume. While paused, a faint "home" top-left stops the audio and fades back to Home. Going to the background also pauses. No other buttons on the meditation screen.
-6. **Polish.** Soft fades between screens.
+3. **The session.** The meditation recording with ambient sound underneath. It ends when the recording ends. No countdown.
+4. **Breathing circle.** `components/BreathingCircle.js`: a soft glow breathing 4s in / 1s hold / 6s out / 1s rest over the sunrise, turning from soft white to warm peach late in the session; a slow 16-second resting breath on Home. Built with React Native's Animated (native driver). Timing lives in the `BREATH` constant at the top of that file.
+5. **Pause and leave.** Tap the circle to pause (sound and circle hold still, the circle dims, "paused" shows under it) and tap again to resume. While paused, a thin house icon top-right stops the audio and fades back to Home. Going to the background also pauses. No other buttons on the meditation screen.
+6. **Warm closing.** Only after the recording finishes on its own: the circle dissolves, a warm gradient fades in, a line for the part of the day the session started shows, then it returns home by itself; a tap goes home sooner. Lines, colors and timings are at the top of `components/ClosingScreen.js`.
+7. **Polish.** Soft fades between screens.
 
 There is **no alarm** anymore: no alarm sound, no keeping the screen awake overnight, no night screen.
 
