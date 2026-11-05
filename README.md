@@ -2,7 +2,7 @@
 
 A morning meditation app built around a simple idea: the first thing you think when you wake up shapes the rest of your day, so you should choose it on purpose.
 
-“Try the demo in your browser: https://kimkukhwa.github.io/first-thought/demo/”
+“Try the demo in your browser: https://kimkukhwa.github.io/first-thought/demo/index.html”
 
 Instead of being jolted awake by an alarm and reaching for your phone, First Thought wakes you gently, settles you with ambient sound, and walks you through a short guided meditation. You pick the feeling you want to carry into the day — calm, clear, confident, grounded — and spend a few minutes feeling it as if it has already happened. That feeling then guides how you think, act, and respond for the rest of the day.
 
