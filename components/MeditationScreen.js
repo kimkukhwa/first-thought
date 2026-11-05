@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayerStatus } from 'expo-audio';
 import { colors } from '../theme';
 import BreathingCircle from './BreathingCircle';
+import HomeIcon from './HomeIcon';
 
 // Sunrise: near-black with a hint of deep blue -> dusty blue-grey ->
 // faint warm haze -> soft pale morning light.
@@ -155,7 +155,7 @@ export default function MeditationScreen({ player, onPause, onResume, onHome, en
           accessibilityRole="button"
           accessibilityLabel="Home"
         >
-          <Ionicons name="home-outline" size={28} color={colors.muted} />
+          <HomeIcon size={28} color={colors.muted} />
         </Pressable>
       </Animated.View>
     </Animated.View>
