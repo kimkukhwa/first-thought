@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  AppState,
   Easing,
   Pressable,
   StyleSheet,
@@ -27,7 +28,7 @@ const CIRCLE_TOP = 0.46; // circle center, as a share of the screen height
 const SMALLEST = 0.6; // size at the bottom of the breath
 const WARM_FROM = 0.6; // share of the session after which the glow turns warm
 const CUE_SECONDS = 60; // "breathe in / out" words fade away after this
-const CONTROLS_SHOW_MS = 3000; // a tap shows End for this long
+const PAUSED_DIM = 0.6; // how bright the circle stays while paused
 
 // How strong each layer of the glow is. "dawn" is the soft white glow on
 // the dark sky; "day" is the warm glow, a little stronger so it stays
@@ -103,7 +104,7 @@ function formatRemaining(totalSeconds) {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 }
 
-export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
+export default function MeditationScreen({ player, onPause, onResume, onHome }) {
   const status = useAudioPlayerStatus(player);
   const { width, height } = useWindowDimensions();
 
@@ -115,43 +116,70 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
   const cycle = useRef(new Animated.Value(0)).current;
   // The breath words: 1 = shown, 0 = gone for good.
   const cues = useRef(new Animated.Value(1)).current;
-  // End (and Pause) stay hidden until the screen is tapped.
-  const [controlsShown, setControlsShown] = useState(false);
-  const controlsOpacity = useRef(new Animated.Value(0)).current;
-  const hideTimer = useRef(null);
-  // While paused, keep the controls showing so Resume is easy to find.
-  const isPaused = status.isLoaded && !status.playing && status.currentTime > 0;
-  const controlsVisible = controlsShown || isPaused;
+  // 0 while the session runs, 1 while it's paused. Drives the dimming,
+  // the "paused" word and the "home" text.
+  const pausedLook = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const animation = Animated.timing(controlsOpacity, {
-      toValue: controlsVisible ? 1 : 0,
-      duration: controlsVisible ? 300 : 800,
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const breathing = useRef(null);
+
+  // Breathes from `from` (a point in the breath, 0..1) to the end of that
+  // breath, then keeps looping whole breaths.
+  function breatheFrom(from) {
+    const finishBreath = Animated.timing(cycle, {
+      toValue: 1,
+      duration: (1 - from) * TOTAL,
+      easing: Easing.linear,
       useNativeDriver: true,
     });
-    animation.start();
-    return () => animation.stop();
-  }, [controlsVisible, controlsOpacity]);
-
-  useEffect(() => () => clearTimeout(hideTimer.current), []);
-
-  function showControls() {
-    setControlsShown(true);
-    clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setControlsShown(false), CONTROLS_SHOW_MS);
+    breathing.current = finishBreath;
+    finishBreath.start(({ finished }) => {
+      if (!finished) return;
+      cycle.setValue(0);
+      const loop = Animated.loop(
+        Animated.timing(cycle, {
+          toValue: 1,
+          duration: TOTAL,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      breathing.current = loop;
+      loop.start();
+    });
   }
 
-  // The breathing never stops while this screen is showing.
+  function pause() {
+    if (pausedRef.current) return;
+    pausedRef.current = true;
+    setPaused(true);
+    // The circle holds still exactly where it is in the breath.
+    if (breathing.current) breathing.current.stop();
+    cycle.stopAnimation();
+    onPause();
+  }
+
+  function resume() {
+    if (!pausedRef.current) return;
+    pausedRef.current = false;
+    setPaused(false);
+    // Carry on from the same point in the breath, at the normal pace.
+    cycle.stopAnimation((value) => breatheFrom(value));
+    onResume();
+  }
+
+  function togglePause() {
+    if (pausedRef.current) {
+      resume();
+    } else {
+      pause();
+    }
+  }
+
+  // Start breathing when the screen appears; the words fade after a minute.
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(cycle, {
-        toValue: 1,
-        duration: TOTAL,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-    loop.start();
+    breatheFrom(0);
     const fadeCues = Animated.timing(cues, {
       toValue: 0,
       delay: CUE_SECONDS * 1000,
@@ -160,10 +188,33 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
     });
     fadeCues.start();
     return () => {
-      loop.stop();
+      if (breathing.current) breathing.current.stop();
       fadeCues.stop();
     };
-  }, [cycle, cues]);
+    // Runs once, when the screen appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // iOS stops the sound when the app goes to the background (Home button,
+  // lock screen), so show the session as paused when the user comes back.
+  const pauseRef = useRef(pause);
+  pauseRef.current = pause;
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') pauseRef.current();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const animation = Animated.timing(pausedLook, {
+      toValue: paused ? 1 : 0,
+      duration: 500,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [paused, pausedLook]);
 
   // The sky and the glow color follow the recording: they move while it
   // plays and hold still while it's paused. Each time playback (re)starts,
@@ -203,6 +254,7 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.playing, status.duration, progress, warmth]);
 
+  // The countdown follows the recording, so it stops while paused.
   const remaining = status.duration ? status.duration - status.currentTime : 0;
 
   const backgroundColor = progress.interpolate({ inputRange: SKY_STOPS, outputRange: SKY_COLORS });
@@ -211,6 +263,8 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
   const breath = cycle.interpolate({ inputRange: BREATH_INPUT, outputRange: BREATH_OUTPUT });
   const scale = breath.interpolate({ inputRange: [0, 1], outputRange: [SMALLEST, 1] });
   const brightness = breath.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1] });
+  const pauseDim = pausedLook.interpolate({ inputRange: [0, 1], outputRange: [1, PAUSED_DIM] });
+  const running = pausedLook.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
   const dawnOpacity = warmth.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
 
   // Each word fades in at the start of its half of the breath and out at the end.
@@ -224,29 +278,24 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
     outputRange: [0, 1, 1, 0],
     extrapolate: 'clamp',
   });
+  // Breath words show only while running, and only in the first minute.
+  const cueInOpacity = Animated.multiply(Animated.multiply(cueIn, cues), running);
+  const cueOutOpacity = Animated.multiply(Animated.multiply(cueOut, cues), running);
 
   const size = width * CIRCLE_WIDTH;
   const centerY = height * CIRCLE_TOP;
   const circleBox = { left: (width - size) / 2, top: centerY - size / 2, width: size, height: size };
-  const cueTop = centerY + size / 2 + 40;
-
-  function handlePauseResume() {
-    showControls();
-    if (status.playing) {
-      onPause();
-    } else {
-      onResume();
-    }
-  }
+  const wordsTop = centerY + size / 2 + 40;
 
   return (
     <Animated.View style={[styles.screen, { backgroundColor }]}>
-      {/* The whole screen listens for a tap that reveals the controls. */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={showControls} />
-
       <Animated.View
         pointerEvents="none"
-        style={[styles.circle, circleBox, { opacity: brightness, transform: [{ scale }] }]}
+        style={[
+          styles.circle,
+          circleBox,
+          { opacity: Animated.multiply(brightness, pauseDim), transform: [{ scale }] },
+        ]}
       >
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: dawnOpacity }]}>
           <Glow size={size} look={DAWN} />
@@ -256,13 +305,18 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
         </Animated.View>
       </Animated.View>
 
-      <View pointerEvents="none" style={[styles.cueArea, { top: cueTop }]}>
-        <Animated.Text style={[styles.cue, { opacity: Animated.multiply(cueIn, cues) }]}>
-          breathe in
-        </Animated.Text>
-        <Animated.Text style={[styles.cue, { opacity: Animated.multiply(cueOut, cues) }]}>
-          breathe out
-        </Animated.Text>
+      {/* The whole circle area, at its full size, pauses and resumes. */}
+      <Pressable
+        style={[styles.circle, circleBox]}
+        onPress={togglePause}
+        accessibilityRole="button"
+        accessibilityLabel={paused ? 'Resume' : 'Pause'}
+      />
+
+      <View pointerEvents="none" style={[styles.wordsArea, { top: wordsTop }]}>
+        <Animated.Text style={[styles.word, { opacity: cueInOpacity }]}>breathe in</Animated.Text>
+        <Animated.Text style={[styles.word, { opacity: cueOutOpacity }]}>breathe out</Animated.Text>
+        <Animated.Text style={[styles.word, { opacity: pausedLook }]}>paused</Animated.Text>
       </View>
 
       <Animated.Text style={[styles.indicator, { color: indicatorColor }]}>
@@ -270,16 +324,11 @@ export default function MeditationScreen({ player, onPause, onResume, onEnd }) {
       </Animated.Text>
 
       <Animated.View
-        pointerEvents={controlsVisible ? 'auto' : 'none'}
-        style={[styles.controls, { opacity: controlsOpacity }]}
+        pointerEvents={paused ? 'auto' : 'none'}
+        style={[styles.homeArea, { opacity: pausedLook }]}
       >
-        <Pressable style={quiet.button} onPress={handlePauseResume} hitSlop={12}>
-          <Text style={[quiet.text, styles.controlText]}>
-            {status.playing ? 'Pause' : 'Resume'}
-          </Text>
-        </Pressable>
-        <Pressable style={quiet.button} onPress={onEnd} hitSlop={12}>
-          <Text style={[quiet.text, styles.controlText]}>End</Text>
+        <Pressable style={styles.homeButton} onPress={onHome} hitSlop={8}>
+          <Text style={[quiet.text, styles.homeText]}>home</Text>
         </Pressable>
       </Animated.View>
     </Animated.View>
@@ -293,13 +342,13 @@ const styles = StyleSheet.create({
   circle: {
     position: 'absolute',
   },
-  cueArea: {
+  wordsArea: {
     position: 'absolute',
     left: 0,
     right: 0,
     alignItems: 'center',
   },
-  cue: {
+  word: {
     position: 'absolute',
     color: colors.muted,
     fontSize: 12,
@@ -314,16 +363,19 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 1,
   },
-  controls: {
+  // Lined up with the countdown on the other side of the screen.
+  homeArea: {
     position: 'absolute',
-    bottom: quiet.bottom,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
+    top: 42,
+    left: 12,
+  },
+  homeButton: {
+    minWidth: 44,
+    minHeight: 44,
+    paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  // Faint, so it never pulls attention from the breathing.
-  controlText: {
+  homeText: {
     opacity: 0.7,
   },
 });

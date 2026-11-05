@@ -44,11 +44,9 @@ Then they simply go to sleep.
 → A quiet reminder notification (if switched on)
 → Tap it, or open the app and tap **Begin**
 
-**A few seconds later**
-→ Ambient sound slowly begins
-
-**Shortly after**
+**Right away**
 → Guided meditation starts, with a breathing circle over a slow sunrise
+→ Ambient sound slowly fades in underneath
 
 **When the recording ends**
 → "Your day begins now."
@@ -129,7 +127,7 @@ Possible visual concept:
 
 The screen gradually becomes lighter as the meditation progresses, mirroring sunrise and waking up.
 
-A single soft glow in the center breathes with the user (4s in, 1s hold, 6s out, 1s rest). It turns from soft white to warm peach as the sky gets pale. Nothing else is on screen; a tap shows a faint End.
+A single soft glow in the center breathes with the user (4s in, 1s hold, 6s out, 1s rest). It turns from soft white to warm peach as the sky gets pale. Nothing else is on screen. Tapping the circle pauses the session (it holds still and dims, and "paused" shows under it); tapping again resumes. While paused, a faint "home" in the corner leaves the session.
 
 ---
 

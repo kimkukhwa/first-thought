@@ -11,7 +11,6 @@ export default function HomeScreen({
   onToggleEditing,
   onToggleReminder,
   onTimeChange,
-  onTestSkipWait,
 }) {
   return (
     <View style={styles.screen}>
@@ -52,14 +51,6 @@ export default function HomeScreen({
             <Text style={quiet.text}>Done</Text>
           </Pressable>
         </>
-      )}
-
-      {__DEV__ && (
-        <View style={styles.testArea}>
-          <Pressable style={styles.testButton} onPress={onTestSkipWait} hitSlop={12}>
-            <Text style={styles.testText}>Test: skip wait</Text>
-          </Pressable>
-        </View>
       )}
     </View>
   );
@@ -128,18 +119,5 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     ...quiet.button,
-  },
-  testArea: {
-    position: 'absolute',
-    bottom: 40,
-    alignItems: 'center',
-  },
-  testButton: {
-    ...quiet.button,
-  },
-  testText: {
-    color: colors.dim,
-    fontSize: 13,
-    letterSpacing: 1,
   },
 });

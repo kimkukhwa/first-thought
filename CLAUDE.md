@@ -8,9 +8,9 @@ First Thought is a morning meditation app. Instead of starting the day by checki
 
 The session, started with **Begin** or by tapping the daily reminder:
 
-1. A soft ambient soundtrack fades in, with a short quiet wait.
-2. A guided meditation plays over the ambient sound, with a breathing circle on screen over a slow sunrise.
-3. The meditation ends, the ambient sound fades out, and the user starts their day.
+1. The meditation screen opens right away: the voice starts and a soft ambient soundtrack fades in underneath, with a breathing circle over a slow sunrise.
+2. Tapping the circle pauses everything; tapping it again resumes. While paused, a faint "home" in the top-left leaves the session.
+3. When the recording ends, the ambient sound fades out, a short closing line shows, and the user starts their day. (Leaving early skips the closing.)
 
 The experience should need almost no interaction. Full product notes live in `docs/product.md`. Read that file before making product or design decisions.
 
@@ -40,9 +40,10 @@ V2 is these things, and only these:
 
 1. **Begin.** A button on Home that starts the session right away.
 2. **Daily reminder.** One repeating local notification at a time the user picks, with On/Off. Tapping it opens straight into the session. If the app is open when it fires, a quiet banner shows and nothing starts on its own. Permission is asked only the first time the reminder is switched on.
-3. **The session.** Ambient sound, then the meditation recording, then a short closing screen.
+3. **The session.** The meditation recording with ambient sound underneath, then a short closing screen when the recording ends.
 4. **Breathing circle.** A soft glow on the meditation screen breathing 4s in / 1s hold / 6s out / 1s rest over the v1 sunrise, turning from soft white to warm peach late in the session. Built with React Native's Animated (native driver), no extra libraries. Timing lives in the `BREATH` constant in `components/MeditationScreen.js`.
-5. **Polish.** Soft fades between screens; during the meditation a tap shows a faint End (and Pause) for 3 seconds.
+5. **Pause and leave.** Tap the circle to pause (sound, countdown and circle hold still, the circle dims, "paused" shows under it) and tap again to resume. While paused, a faint "home" top-left stops the audio and fades back to Home. Going to the background also pauses. No other buttons on the meditation screen.
+6. **Polish.** Soft fades between screens.
 
 There is **no alarm** anymore: no alarm sound, no keeping the screen awake overnight, no night screen.
 

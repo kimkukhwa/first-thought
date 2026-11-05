@@ -16,7 +16,7 @@ Instead of being jolted awake by an alarm and reaching for your phone, First Tho
 
 - **No alarm.** A daily reminder notification at a time you pick (or none), plus a Begin button to start any time. Tapping the reminder opens straight into the session.
 - **Breathing circle.** One soft glow that breathes 4s in, 1s hold, 6s out, 1s rest, turning from soft white to warm peach as the sunrise gets pale. Built with React Native's Animated API on the native driver, no extra libraries.
-- **Recorded meditation.** The session lasts as long as the recording; it can be paused or ended early.
+- **Recorded meditation.** The session lasts as long as the recording. Tap the circle to pause or resume; while paused, "home" leaves the session.
 - **Soft transitions** between every screen, and a meditation screen with nothing on it but the breathing.
 
 ## Built with

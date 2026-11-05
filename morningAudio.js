@@ -4,73 +4,74 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 const ambientSource = require('./assets/audio/ambient.wav');
 const meditationSource = require('./assets/audio/meditation.m4a');
 
-// Owns the two sound players for the morning sequence and exposes
-// simple actions. The sequence timing itself lives in MorningScreen.
+// Owns the two sound players for the session and exposes simple actions.
+// The sequence itself lives in MorningScreen.
 export function useMorningAudio() {
   const ambient = useAudioPlayer(ambientSource);
   const meditation = useAudioPlayer(meditationSource);
-  // One running volume fade per player, so a new fade replaces the old one.
-  const fades = useRef({ ambient: null, meditation: null });
+  const fadeInterval = useRef(null);
+  const ambientFadeInSeconds = useRef(0);
+  // True while the user has the session paused.
+  const paused = useRef(false);
 
   // Make sure no fade keeps running after the screen goes away.
-  useEffect(
-    () => () => {
-      clearInterval(fades.current.ambient);
-      clearInterval(fades.current.meditation);
-    },
-    []
-  );
+  useEffect(() => () => clearInterval(fadeInterval.current), []);
 
   return useMemo(() => {
-    // Moves `player`'s volume from where it is to `target` over `seconds`.
-    function fade(name, player, target, seconds, onDone) {
-      clearInterval(fades.current[name]);
+    // Moves the ambient volume from where it is to `target` over `seconds`.
+    function fadeAmbient(target, seconds, onDone) {
+      clearInterval(fadeInterval.current);
       const stepMs = 100;
       const totalSteps = Math.max(1, (seconds * 1000) / stepMs);
-      const start = player.volume;
+      const start = ambient.volume;
       let step = 0;
-      fades.current[name] = setInterval(() => {
+      fadeInterval.current = setInterval(() => {
         step += 1;
-        player.volume = start + (target - start) * Math.min(1, step / totalSteps);
+        ambient.volume = start + (target - start) * Math.min(1, step / totalSteps);
         if (step >= totalSteps) {
-          clearInterval(fades.current[name]);
+          clearInterval(fadeInterval.current);
           if (onDone) onDone();
         }
       }, stepMs);
     }
 
     return {
-      startAmbient(fadeSeconds) {
+      // Ambient fades in and the meditation voice starts, together.
+      startSession(fadeInSeconds) {
+        ambientFadeInSeconds.current = fadeInSeconds;
         ambient.loop = true;
         ambient.volume = 0;
+        meditation.volume = 1;
         // Play even when the iPhone's silent switch is on.
         setAudioModeAsync({ playsInSilentMode: true })
           .catch(() => {})
           .then(() => {
+            if (paused.current) return;
             ambient.play();
-            fade('ambient', ambient, 1, fadeSeconds);
+            meditation.play();
+            fadeAmbient(1, fadeInSeconds);
           });
       },
-      fadeOutAmbient(seconds) {
-        fade('ambient', ambient, 0, seconds, () => ambient.pause());
-      },
-      startMeditation() {
-        meditation.volume = 1;
-        meditation.play();
-      },
-      // A gentle ending: the voice fades away instead of cutting off.
-      fadeOutMeditation(seconds) {
-        fade('meditation', meditation, 0, seconds, () => meditation.pause());
-      },
-      pauseMeditation() {
+      pauseAll() {
+        paused.current = true;
+        clearInterval(fadeInterval.current);
+        ambient.pause();
         meditation.pause();
       },
-      resumeMeditation() {
+      resumeAll() {
+        paused.current = false;
+        ambient.play();
         meditation.play();
+        // If the session was paused during the fade-in, finish it.
+        if (ambient.volume < 1) {
+          fadeAmbient(1, (1 - ambient.volume) * ambientFadeInSeconds.current);
+        }
+      },
+      fadeOutAmbient(seconds) {
+        fadeAmbient(0, seconds, () => ambient.pause());
       },
       stopAll() {
-        clearInterval(fades.current.ambient);
-        clearInterval(fades.current.meditation);
+        clearInterval(fadeInterval.current);
         ambient.pause();
         meditation.pause();
       },

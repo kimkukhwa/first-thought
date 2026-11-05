@@ -16,7 +16,6 @@ import {
   useLastNotificationResponse,
 } from './reminderNotification';
 
-const WAIT_BEFORE_MEDITATION_SECONDS = 5;
 const DEFAULT_REMINDER = { hours: 7, minutes: 0, on: false };
 
 export default function App() {
@@ -31,9 +30,6 @@ export default function App() {
   // Goes up each time the app comes back to the front, so we re-check
   // permission (the user may have changed it in Settings meanwhile).
   const [appActiveCount, setAppActiveCount] = useState(0);
-  // How long to wait, quietly, after the ambient sound starts before the
-  // meditation begins. The test button shortens it.
-  const [waitSeconds, setWaitSeconds] = useState(WAIT_BEFORE_MEDITATION_SECONDS);
 
   // Load saved settings once at startup.
   useEffect(() => {
@@ -117,14 +113,7 @@ export default function App() {
     setView('session');
   }
 
-  // Development only: start the session without the short wait.
-  function testSkipWait() {
-    setWaitSeconds(0);
-    begin();
-  }
-
   function finishSession() {
-    setWaitSeconds(WAIT_BEFORE_MEDITATION_SECONDS);
     setView('home');
   }
 
@@ -137,7 +126,7 @@ export default function App() {
       ) : (
         <Fade screenKey={view}>
           {view === 'session' ? (
-            <MorningScreen onDone={finishSession} waitSeconds={waitSeconds} />
+            <MorningScreen onDone={finishSession} />
           ) : (
             <HomeScreen
               reminder={reminder}
@@ -147,7 +136,6 @@ export default function App() {
               onToggleEditing={toggleEditing}
               onToggleReminder={toggleReminder}
               onTimeChange={handleTimeChange}
-              onTestSkipWait={testSkipWait}
             />
           )}
         </Fade>
