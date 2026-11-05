@@ -100,17 +100,23 @@ export default function HomeScreen({
       </Animated.Text>
 
       <Animated.View style={[styles.circleSpot, circleBox, { transform: [{ translateY }] }]}>
-        <BreathingCircle size={size} mode={leaving ? 'handoff' : 'resting'} />
-        <Animated.View pointerEvents="none" style={[styles.beginArea, { opacity: words }]}>
-          <Text style={styles.beginWord}>begin</Text>
-        </Animated.View>
-        <Pressable
-          style={[styles.circleSpot, tapBox]}
-          onPress={startSession}
-          disabled={leaving}
-          accessibilityRole="button"
-          accessibilityLabel="Begin meditation"
-        />
+        {/* One wrapper the exact size of the circle: the glow, the word on
+            top of its core, and the tap area all share the same center. */}
+        <View style={{ width: size, height: size }}>
+          <BreathingCircle size={size} mode={leaving ? 'handoff' : 'resting'} />
+          {/* Outside the breathing scale, so the word stays still; it lets
+              taps through to the circle underneath. */}
+          <Animated.View pointerEvents="none" style={[styles.beginArea, { opacity: words }]}>
+            <Text style={styles.beginWord}>begin</Text>
+          </Animated.View>
+          <Pressable
+            style={[styles.circleSpot, tapBox]}
+            onPress={startSession}
+            disabled={leaving}
+            accessibilityRole="button"
+            accessibilityLabel="Begin meditation"
+          />
+        </View>
       </Animated.View>
 
       {isEditing && !leaving && (
@@ -191,7 +197,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   beginArea: {
-    ...StyleSheet.absoluteFillObject,
+    // Fills the circle wrapper. (StyleSheet.absoluteFillObject no longer
+    // exists in React Native 0.88, so the values are written out.)
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -200,6 +212,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '400',
     letterSpacing: 3.4,
+    // iOS adds the letter spacing after the last letter too; the same space
+    // on the left keeps the word visually centered on the core.
+    paddingLeft: 3.4,
+    textAlign: 'center',
   },
   pickerPanel: {
     position: 'absolute',
