@@ -3,14 +3,14 @@
 A morning meditation app built around a simple idea: the first thing you think when you wake up shapes the rest of your day, so you should choose it on purpose.
 
 
-Instead of being jolted awake by an alarm and reaching for your phone, First Thought wakes you gently, settles you with ambient sound, and walks you through a short guided meditation. You pick the feeling you want to carry into the day — calm, clear, confident, grounded — and spend a few minutes feeling it as if it has already happened. That feeling then guides how you think, act, and respond for the rest of the day.
+Instead of being jolted awake by an alarm and reaching for your phone, First Thought wakes you gently, settles you with a gong and soft music, and walks you through a short guided meditation. You pick the feeling you want to carry into the day — calm, clear, confident, grounded — and spend a few minutes feeling it as if it has already happened. That feeling then guides how you think, act, and respond for the rest of the day.
 
 
 ## How it works
 **Try the demo in your browser:** https://kimkukhwa.github.io/first-thought/demo/index.html
 
 1. **Begin** — tap the breathing circle on Home, or tap the daily reminder notification
-2. **Settle** — ambient sound fades in
+2. **Settle** — an opening gong and soft music
 3. **Meditate** — a guided session where you choose and inhabit your intention for the day, with a breathing circle over a slow sunrise
 4. **Close** — the sky warms, a short line for the time of day, and back home
 
@@ -50,12 +50,12 @@ Scan the QR code with Expo Go on your phone and tap the breathing circle.
 ```
 App.js                  app state, reminder scheduling, screen changes
 components/             Home, the breathing circle, the session and closing screens, the Fade transition
-morningAudio.js         ambient and meditation playback, volume fades
+morningAudio.js         meditation playback
 reminderNotification.js the daily reminder notification
 reminderStorage.js      saving and loading reminder settings
 time.js                 time formatting and part of the day
 theme.js                colors and shared button styles
-assets/audio/           ambient and meditation tracks
+assets/audio/           the meditation track
 docs/product.md         the product thinking behind the app
 ```
 

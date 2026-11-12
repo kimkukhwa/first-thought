@@ -6,14 +6,11 @@ import { partOfDay } from '../time';
 import MeditationScreen from './MeditationScreen';
 import ClosingScreen from './ClosingScreen';
 
-const AMBIENT_FADE_IN_SECONDS = 5;
-const AMBIENT_FADE_OUT_SECONDS = 8;
-
 // The session, in order:
-//   'meditation' ambient fades in under the voice; the breathing circle
-//                shows until the recording ends
-//   'closing'    the circle dissolves, ambient fades out, and the warm
-//                closing lies over the meditation, then returns home
+//   'meditation' the track plays (gongs, voice and music are all in it);
+//                the breathing circle shows until the track ends
+//   'closing'    the circle dissolves and the warm closing lies over the
+//                meditation, then returns home
 // Pausing and tapping the house icon leaves early and skips the closing.
 export default function MorningScreen({ onDone }) {
   const audio = useMorningAudio();
@@ -22,9 +19,9 @@ export default function MorningScreen({ onDone }) {
   // The closing line follows the part of the day when the session started.
   const [startPart] = useState(() => partOfDay());
 
-  // Start both sounds as soon as the session opens.
+  // Start the track as soon as the session opens.
   useEffect(() => {
-    audio.startSession(AMBIENT_FADE_IN_SECONDS);
+    audio.startSession();
   }, [audio]);
 
   // Move on only once the recording itself reports that it has finished.
@@ -34,11 +31,6 @@ export default function MorningScreen({ onDone }) {
       setPhase('closing');
     }
   }, [phase, meditationStatus.didJustFinish]);
-
-  useEffect(() => {
-    if (phase !== 'closing') return;
-    audio.fadeOutAmbient(AMBIENT_FADE_OUT_SECONDS);
-  }, [phase, audio]);
 
   function leave() {
     audio.stopAll();
